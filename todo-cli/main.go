@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 	"encoding/json"
-
+	"errors"
 )
 
+var ErrTaskNotFound = errors.New("task not found") 
 
 type Task struct {
 	ID          int `json:"id"`
@@ -43,7 +44,7 @@ func (t *TaskList) CompleteTask(id int) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("task with ID %d not found", id)
+	return ErrTaskNotFound
 }
 
 
@@ -54,7 +55,7 @@ func (t *TaskList) DeleteTask(id int) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("task with ID %d not found", id)	
+	return ErrTaskNotFound	
 }
 
 
