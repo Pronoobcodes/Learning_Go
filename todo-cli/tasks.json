@@ -6,16 +6,6 @@
       "completed": true
     },
     {
-      "id": 2,
-      "description": "Clean the house",
-      "completed": true
-    },
-    {
-      "id": 3,
-      "description": "Finish the project",
-      "completed": false
-    },
-    {
       "id": 4,
       "description": "Read a book",
       "completed": false
@@ -23,6 +13,16 @@
     {
       "id": 5,
       "description": "Go for a walk",
+      "completed": false
+    },
+    {
+      "id": 6,
+      "description": "Learn Go",
+      "completed": false
+    },
+    {
+      "id": 7,
+      "description": "Test ID system",
       "completed": false
     }
   ]
