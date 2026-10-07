@@ -68,7 +68,20 @@ func (t *TaskList) SaveToFile(filename string) error {
 }
 
 
+func (t *TaskList) LoadFromFile(filename string) error {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	return json.Unmarshal(data, t)
+}
+
+
 func main() {
+	/*
 	list := TaskList{
 		Tasks: []Task{
 			{ID: 1, Description: "Buy groceries", Completed: false},
@@ -105,4 +118,15 @@ func main() {
 	for _, task := range list.Tasks {
 		fmt.Printf("Task %d: %s - %v\n", task.ID, task.Description, task.Completed)
 	}
+	*/
+	store := TaskList{}	
+
+	err := store.LoadFromFile("todo-cli/tasks.json")
+	if err != nil {
+		fmt.Println("Error loading tasks from file:", err)
+		return
+	}
+
+	fmt.Println("Loaded tasks from tasks.json:")
+	fmt.Println(store.GetTasks())
 }
