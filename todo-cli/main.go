@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	// "os"
+	"os"
+	"encoding/json"
 
 )
 
@@ -57,6 +58,16 @@ func (t *TaskList) DeleteTask(id int) error {
 }
 
 
+func (t *TaskList) SaveToFile(filename string) error {
+	data, err := json.MarshalIndent(t, "", "  ")
+	if err != nil {
+		return err
+	}
+	
+	return os.WriteFile(filename, data, 0644)
+}
+
+
 func main() {
 	list := TaskList{
 		Tasks: []Task{
@@ -76,12 +87,19 @@ func main() {
 
 	fmt.Println(list.GetTasks())
 
+	err = list.SaveToFile("tasks.json")
+
+	if err != nil {
+		fmt.Println("Error saving tasks to file:", err)
+	} else {
+		fmt.Println("Tasks saved to tasks.json")
+	}
+
 	for _, task := range list.Tasks {
 		fmt.Printf("Task %d: %s - %v\n", task.ID, task.Description, task.Completed)
 	}
 
-	list.DeleteTask(3)
-
+	 
 	fmt.Println(list.GetTasks())
 
 	for _, task := range list.Tasks {
