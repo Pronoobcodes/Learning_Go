@@ -40,9 +40,27 @@ func checkURL(ctx context.Context, url string) Result {
 	return Result{URL: url, Status: fmt.Sprintf("%d", resp.StatusCode), Error: nil}
 }
 
+func printResult(result Result) {
+	if result.Error != nil {
+		fmt.Printf(
+			"%s - ERROR: %v\n",
+			result.URL,
+			result.Error,
+		)
+		return
+	}
+
+	fmt.Printf(
+		"%s - HTTP %d\n",
+		result.URL,
+		result.Status,
+	)
+}
+
 func main() {
 	jobs := make(chan string)
-
+	results := make(chan Result)
+		
 	var wg sync.WaitGroup
 
 	ctx := context.Background()
@@ -68,7 +86,7 @@ func main() {
 
 			for url := range jobs {
 				result := checkURL(ctx, url)
-				fmt.Printf("URL: %s, Status: %s, Error: %v\n", result.URL, result.Status, result.Error)
+				results <- result
 			}
 		}()
 	}
@@ -82,12 +100,20 @@ func main() {
 		"https://www.nonexistentwebsite.com",
 	}
 
-	for _, url := range urls {
-		jobs <- url
+	go func() {
+		for _, url := range urls {
+			jobs <- url
+		}
+		close(jobs)
+	}()	
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	for result := range results {
+		printResult(result)
 	}
-
-	close(jobs)
-
-	wg.Wait()
 
 }
