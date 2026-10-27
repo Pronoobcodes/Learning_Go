@@ -9,7 +9,13 @@ import (
 )
 
 type Querier interface {
-	CountNotes(ctx context.Context) (int64, error)
+	// -- name: CountNotes :one
+	// SELECT COUNT(*)::BIGINT FROM notes;
+	CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error)
+	DeleteNote(ctx context.Context, id int64) (int64, error)
+	GetNote(ctx context.Context, id int64) (Note, error)
+	ListNotes(ctx context.Context) ([]Note, error)
+	UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, error)
 }
 
 var _ Querier = (*Queries)(nil)

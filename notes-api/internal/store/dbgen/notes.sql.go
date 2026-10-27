@@ -9,13 +9,141 @@ import (
 	"context"
 )
 
-const countNotes = `-- name: CountNotes :one
-SELECT COUNT(*)::BIGINT FROM notes
+const createNote = `-- name: CreateNote :one
+
+
+INSERT INTO
+    notes (title, content)
+VALUES ($1, $2) RETURNING id,
+    title,
+    content,
+    created_at,
+    updated_at
 `
 
-func (q *Queries) CountNotes(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, countNotes)
-	var column_1 int64
-	err := row.Scan(&column_1)
-	return column_1, err
+type CreateNoteParams struct {
+	Title   string
+	Content string
+}
+
+// -- name: CountNotes :one
+// SELECT COUNT(*)::BIGINT FROM notes;
+func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error) {
+	row := q.db.QueryRow(ctx, createNote, arg.Title, arg.Content)
+	var i Note
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteNote = `-- name: DeleteNote :execrows
+DELETE FROM notes WHERE id = $1
+`
+
+func (q *Queries) DeleteNote(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteNote, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getNote = `-- name: GetNote :one
+SELECT
+    id,
+    title,
+    content,
+    created_at,
+    updated_at
+FROM notes
+WHERE
+    id = $1
+`
+
+func (q *Queries) GetNote(ctx context.Context, id int64) (Note, error) {
+	row := q.db.QueryRow(ctx, getNote, id)
+	var i Note
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const listNotes = `-- name: ListNotes :many
+SELECT
+    id,
+    title,
+    content,
+    created_at,
+    updated_at
+FROM notes
+ORDER BY id DESC
+`
+
+func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
+	rows, err := q.db.Query(ctx, listNotes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Note
+	for rows.Next() {
+		var i Note
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateNote = `-- name: UpdateNote :one
+UPDATE notes
+SET
+    title = $2,
+    content = $3,
+    updated_at = now()
+WHERE
+    id = $1 RETURNING id,
+    title,
+    content,
+    created_at,
+    updated_at
+`
+
+type UpdateNoteParams struct {
+	ID      int64
+	Title   string
+	Content string
+}
+
+func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, error) {
+	row := q.db.QueryRow(ctx, updateNote, arg.ID, arg.Title, arg.Content)
+	var i Note
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
