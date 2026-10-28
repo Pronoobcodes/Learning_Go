@@ -7,17 +7,24 @@ import (
 	"notes-api/internal/store"
 )
 
-func NewMux(notesRepo store.NoteRepository) *http.ServeMux {
+func NewMux(notesRepo store.NoteRepository, bookmarksRepo store.BookmarkRepository) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 
-	handler := NewNotesHandler(notesRepo) // Replace nil with your actual NoteRepository implementation
+	notesHandler := NewNotesHandler(notesRepo) // Replace nil with your actual NoteRepository implementation
+	bookmarksHandler := NewBookmarksHandler(bookmarksRepo) // Replace nil with your actual BookmarkRepository implementation
 
-	mux.HandleFunc("/notes", handler.ListNotesHandler)
-	mux.HandleFunc("GET /notes/{id}", handler.GetNoteHandler)
-	mux.HandleFunc("POST /notes", handler.CreateNoteHandler)
-	mux.HandleFunc("PUT /notes/{id}", handler.UpdateNoteHandler)
-	mux.HandleFunc("DELETE /notes/{id}", handler.DeleteNoteHandler)
+	mux.HandleFunc("/notes", notesHandler.ListNotesHandler)
+	mux.HandleFunc("GET /notes/{id}", notesHandler.GetNoteHandler)
+	mux.HandleFunc("POST /notes", notesHandler.CreateNoteHandler)
+	mux.HandleFunc("PUT /notes/{id}", notesHandler.UpdateNoteHandler)
+	mux.HandleFunc("DELETE /notes/{id}", notesHandler.DeleteNoteHandler)
+	
+	mux.HandleFunc("/bookmarks", bookmarksHandler.ListBookmarks)
+	mux.HandleFunc("GET /bookmarks/{id}", bookmarksHandler.GetBookmark)
+	mux.HandleFunc("POST /bookmarks", bookmarksHandler.CreateBookmark)
+	mux.HandleFunc("PUT /bookmarks/{id}", bookmarksHandler.UpdateBookmark)
+	mux.HandleFunc("DELETE /bookmarks/{id}", bookmarksHandler.DeleteBookmark)
 	return mux
 }
 

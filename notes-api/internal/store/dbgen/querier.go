@@ -9,12 +9,17 @@ import (
 )
 
 type Querier interface {
+	CreateBookmark(ctx context.Context, arg CreateBookmarkParams) (Bookmark, error)
 	// -- name: CountNotes :one
 	// SELECT COUNT(*)::BIGINT FROM notes;
 	CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error)
+	DeleteBookmark(ctx context.Context, id int64) (int64, error)
 	DeleteNote(ctx context.Context, id int64) (int64, error)
+	GetBookmark(ctx context.Context, id int64) (Bookmark, error)
 	GetNote(ctx context.Context, id int64) (Note, error)
+	ListBookmarks(ctx context.Context) ([]Bookmark, error)
 	ListNotes(ctx context.Context) ([]Note, error)
+	UpdateBookmark(ctx context.Context, arg UpdateBookmarkParams) (Bookmark, error)
 	UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, error)
 }
 

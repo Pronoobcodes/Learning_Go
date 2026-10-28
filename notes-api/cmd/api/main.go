@@ -29,7 +29,8 @@ func main() {
 
 	queries := dbgen.New(pool)
 	notesRepo := store.NewNotes(queries)
-	mux := httpapi.NewMux(notesRepo)
+	bookmarksRepo := store.NewBookmarks(queries)
+	mux := httpapi.NewMux(notesRepo, bookmarksRepo)
 
 	server := &http.Server{
 		Addr:    ":8080",
