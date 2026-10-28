@@ -2,9 +2,10 @@ package httpapi
 
 import (
 	"encoding/json"
-	"net/http"
 	"errors"
+	"net/http"
 	"strconv"
+	"strings"
 
 	"notes-api/internal/store"
 
@@ -150,4 +151,42 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		return
 	} 
+}
+
+type addNoteTagsRequest struct {
+	Tag []string `json:"tags"`
+}
+
+func (h *NotesHandler) AddTags(w http.ResponseWriter, r *http.Request) {
+	noteID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
+
+	var req addNoteTagsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Tag) == 0 {
+		http.Error(w, "At least one tag is required", http.StatusBadRequest)
+		return
+	}
+
+	for _, tag := range req.Tag {
+		tag = strings.TrimSpace(tag)
+
+		if tag == "" {
+			http.Error(w, "Tag cannot be empty", http.StatusBadRequest)
+			return
+		}
+
+		if err := h.notesRepo.AddTagToNote(r.Context(), noteID, tag); err != nil {
+			http.Error(w, "Failed to add tag to note", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Tags added successfully"})
 }

@@ -11,6 +11,7 @@ type NoteRepository interface {
 	GetNote(ctx context.Context, id int64) (dbgen.Note, error)
 	ListNotes(ctx context.Context) ([]dbgen.Note, error)
 	UpdateNote(ctx context.Context, id int64, title, content string) (dbgen.Note, error)
+	AddTagToNote(ctx context.Context, noteID int64, tag string) error
 }
 
 type Notes struct {
@@ -47,5 +48,12 @@ func (n *Notes) UpdateNote(ctx context.Context, id int64, title, content string)
 		ID:      id,
 		Title:   title,
 		Content: content,
+	})
+}
+
+func (n *Notes) AddTagToNote(ctx context.Context, noteID int64, tag string) error {
+	return n.queries.AddTagToNote(ctx, dbgen.AddTagToNoteParams{
+		NoteID: noteID,
+		Name: tag,
 	})
 }

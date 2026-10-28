@@ -9,6 +9,34 @@ import (
 	"context"
 )
 
+const addTagToNote = `-- name: AddTagToNote :exec
+WITH inserted_tag AS (
+    INSERT INTO tags (name)
+    VALUES ($2)
+    ON CONFLICT (name) DO NOTHING
+    RETURNING id
+)
+INSERT INTO note_tags (note_id, tag_id)
+VALUES (
+    $1,
+    COALESCE(
+        (SELECT id FROM inserted_tag),
+        (SELECT id FROM tags WHERE tags.name = $2)
+    )
+)
+ON CONFLICT (note_id, tag_id) DO NOTHING
+`
+
+type AddTagToNoteParams struct {
+	NoteID int64
+	Name   string
+}
+
+func (q *Queries) AddTagToNote(ctx context.Context, arg AddTagToNoteParams) error {
+	_, err := q.db.Exec(ctx, addTagToNote, arg.NoteID, arg.Name)
+	return err
+}
+
 const createNote = `-- name: CreateNote :one
 
 

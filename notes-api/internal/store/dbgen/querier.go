@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	AddTagToNote(ctx context.Context, arg AddTagToNoteParams) error
 	CreateBookmark(ctx context.Context, arg CreateBookmarkParams) (Bookmark, error)
 	// -- name: CountNotes :one
 	// SELECT COUNT(*)::BIGINT FROM notes;

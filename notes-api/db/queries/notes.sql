@@ -47,3 +47,20 @@ WHERE
 
 -- name: DeleteNote :execrows
 DELETE FROM notes WHERE id = $1;
+
+-- name: AddTagToNote :exec
+WITH inserted_tag AS (
+    INSERT INTO tags (name)
+    VALUES ($2)
+    ON CONFLICT (name) DO NOTHING
+    RETURNING id
+)
+INSERT INTO note_tags (note_id, tag_id)
+VALUES (
+    $1,
+    COALESCE(
+        (SELECT id FROM inserted_tag),
+        (SELECT id FROM tags WHERE tags.name = $2)
+    )
+)
+ON CONFLICT (note_id, tag_id) DO NOTHING;

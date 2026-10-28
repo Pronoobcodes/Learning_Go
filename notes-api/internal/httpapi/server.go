@@ -19,6 +19,7 @@ func NewMux(notesRepo store.NoteRepository, bookmarksRepo store.BookmarkReposito
 	mux.HandleFunc("POST /notes", notesHandler.CreateNoteHandler)
 	mux.HandleFunc("PUT /notes/{id}", notesHandler.UpdateNoteHandler)
 	mux.HandleFunc("DELETE /notes/{id}", notesHandler.DeleteNoteHandler)
+	mux.HandleFunc("POST /notes/{id}/tags", notesHandler.AddTags)
 	
 	mux.HandleFunc("/bookmarks", bookmarksHandler.ListBookmarks)
 	mux.HandleFunc("GET /bookmarks/{id}", bookmarksHandler.GetBookmark)
