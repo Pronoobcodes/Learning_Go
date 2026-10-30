@@ -153,3 +153,50 @@ func validBookmarkURL(u string) bool {
 
 	return parsedURL.Host != ""
 }
+
+type addBookmarkTagsRequest struct {
+	Tags []string `json:"tags"`
+}
+
+func (b *BookmarksHandler) AddTags(w http.ResponseWriter, r *http.Request) {
+    bookmarkID, ok := parseID(w, r)
+    if !ok {
+        return
+    }
+
+    var req addBookmarkTagsRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "invalid JSON body", http.StatusBadRequest)
+        return
+    }
+
+    if len(req.Tags) == 0 {
+        http.Error(w, "tags must not be empty", http.StatusBadRequest)
+        return
+    }
+
+    if _, err := b.bookmarks.GetBookmark(r.Context(), bookmarkID); errors.Is(err, pgx.ErrNoRows) {
+        http.Error(w, "bookmark not found", http.StatusNotFound)
+        return
+    } else if err != nil {
+        http.Error(w, "could not retrieve bookmark", http.StatusInternalServerError)
+        return
+    }
+
+    for _, tag := range req.Tags {
+        tag = strings.TrimSpace(tag)
+        if tag == "" {
+            http.Error(w, "tag must not be empty", http.StatusBadRequest)
+            return
+        }
+
+        if err := b.bookmarks.AddTagToBookmark(r.Context(), bookmarkID, tag); err != nil {
+            http.Error(w, "could not add tag to bookmark", http.StatusInternalServerError)
+            return
+        }
+    }
+
+    writeJSON(w, http.StatusOK, map[string]string{
+        "message": "tags added successfully",
+    })
+}

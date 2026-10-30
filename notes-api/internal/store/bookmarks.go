@@ -11,6 +11,7 @@ type BookmarkRepository interface {
 	GetBookmark(ctx context.Context, id int64) (dbgen.Bookmark, error)
 	ListBookmarks(ctx context.Context) ([]dbgen.Bookmark, error)
 	UpdateBookmark(ctx context.Context, id int64, url, title, description string) (dbgen.Bookmark, error)
+	AddTagToBookmark(ctx context.Context, bookmarkID int64, tag string) error
 }
 
 type Bookmarks struct {
@@ -47,5 +48,12 @@ func (b *Bookmarks) UpdateBookmark(ctx context.Context, id int64, url, title, de
 		Url:         url,
 		Title:       title,
 		Description: description,
+	})
+}
+
+func (b *Bookmarks) AddTagToBookmark(ctx context.Context, bookmarkID int64, tag string) error {
+	return b.queries.AddTagToBookmark(ctx, dbgen.AddTagToBookmarkParams{
+		BookmarkID: bookmarkID,
+		Name:       tag,
 	})
 }

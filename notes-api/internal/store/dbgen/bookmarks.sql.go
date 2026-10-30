@@ -9,6 +9,34 @@ import (
 	"context"
 )
 
+const addTagToBookmark = `-- name: AddTagToBookmark :exec
+WITH inserted_tag AS (
+    INSERT INTO tags (name)
+    VALUES ($2)
+    ON CONFLICT (name) DO NOTHING
+    RETURNING id
+)
+INSERT INTO bookmark_tags (bookmark_id, tag_id)
+VALUES (
+        $1,
+        COALESCE(
+            (SELECT id FROM inserted_tag),
+            (SELECT id FROM tags WHERE tags.name = $2)
+        )
+    )
+ON CONFLICT (bookmark_id, tag_id) DO NOTHING
+`
+
+type AddTagToBookmarkParams struct {
+	BookmarkID int64
+	Name       string
+}
+
+func (q *Queries) AddTagToBookmark(ctx context.Context, arg AddTagToBookmarkParams) error {
+	_, err := q.db.Exec(ctx, addTagToBookmark, arg.BookmarkID, arg.Name)
+	return err
+}
+
 const createBookmark = `-- name: CreateBookmark :one
 INSERT INTO
     bookmarks (url, title, description)

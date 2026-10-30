@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	AddTagToBookmark(ctx context.Context, arg AddTagToBookmarkParams) error
 	AddTagToNote(ctx context.Context, arg AddTagToNoteParams) error
 	CreateBookmark(ctx context.Context, arg CreateBookmarkParams) (Bookmark, error)
 	// -- name: CountNotes :one

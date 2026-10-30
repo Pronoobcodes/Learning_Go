@@ -48,3 +48,20 @@ WHERE
 
 -- name: DeleteBookmark :execrows
 DELETE FROM bookmarks WHERE id = $1;
+
+-- name: AddTagToBookmark :exec
+WITH inserted_tag AS (
+    INSERT INTO tags (name)
+    VALUES ($2)
+    ON CONFLICT (name) DO NOTHING
+    RETURNING id
+)
+INSERT INTO bookmark_tags (bookmark_id, tag_id)
+VALUES (
+        $1,
+        COALESCE(
+            (SELECT id FROM inserted_tag),
+            (SELECT id FROM tags WHERE tags.name = $2)
+        )
+    )
+ON CONFLICT (bookmark_id, tag_id) DO NOTHING;
