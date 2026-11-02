@@ -11,7 +11,7 @@ func NewMux(notesRepo store.NoteRepository, bookmarksRepo store.BookmarkReposito
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 
-	notesHandler := NewNotesHandler(notesRepo) // Replace nil with your actual NoteRepository implementation
+	notesHandler := NewNotesHandler(notesRepo)             // Replace nil with your actual NoteRepository implementation
 	bookmarksHandler := NewBookmarksHandler(bookmarksRepo) // Replace nil with your actual BookmarkRepository implementation
 
 	mux.HandleFunc("/notes", notesHandler.ListNotesHandler)
@@ -20,13 +20,13 @@ func NewMux(notesRepo store.NoteRepository, bookmarksRepo store.BookmarkReposito
 	mux.HandleFunc("PUT /notes/{id}", notesHandler.UpdateNoteHandler)
 	mux.HandleFunc("DELETE /notes/{id}", notesHandler.DeleteNoteHandler)
 	mux.HandleFunc("POST /notes/{id}/tags", notesHandler.AddTags)
-	
+
 	mux.HandleFunc("/bookmarks", bookmarksHandler.ListBookmarks)
 	mux.HandleFunc("GET /bookmarks/{id}", bookmarksHandler.GetBookmark)
 	mux.HandleFunc("POST /bookmarks", bookmarksHandler.CreateBookmark)
 	mux.HandleFunc("PUT /bookmarks/{id}", bookmarksHandler.UpdateBookmark)
 	mux.HandleFunc("DELETE /bookmarks/{id}", bookmarksHandler.DeleteBookmark)
-	mux.HandleFunc("POST /bookmarks/{id}/tags", bookmarksHandler.AddTags,)
+	mux.HandleFunc("POST /bookmarks/{id}/tags", bookmarksHandler.AddTags)
 	return mux
 }
 

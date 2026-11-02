@@ -12,7 +12,7 @@ type BookmarkRepository interface {
 	ListBookmarks(ctx context.Context) ([]dbgen.Bookmark, error)
 	UpdateBookmark(ctx context.Context, id int64, url, title, description string) (dbgen.Bookmark, error)
 	AddTagToBookmark(ctx context.Context, bookmarkID int64, tag string) error
-	SearchBookmarks(ctx context.Context, search string, tag string,)([]dbgen.Bookmark, error)
+	SearchBookmarks(ctx context.Context, search string, tag string) ([]dbgen.Bookmark, error)
 }
 
 type Bookmarks struct {
@@ -59,9 +59,9 @@ func (b *Bookmarks) AddTagToBookmark(ctx context.Context, bookmarkID int64, tag 
 	})
 }
 
-func (b *Bookmarks) SearchBookmarks(ctx context.Context, search string, tag string,) ([]dbgen.Bookmark, error){
+func (b *Bookmarks) SearchBookmarks(ctx context.Context, search string, tag string) ([]dbgen.Bookmark, error) {
 	return b.queries.SearchBookmarks(ctx, dbgen.SearchBookmarksParams{
 		Search: search,
-		Tag: tag,
-	},)
+		Tag:    tag,
+	})
 }

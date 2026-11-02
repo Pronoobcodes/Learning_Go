@@ -35,8 +35,8 @@ type updateNoteRequest struct {
 func (h *NotesHandler) CreateNoteHandler(w http.ResponseWriter, r *http.Request) {
 	var req createNoteRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "request body is invalid")
 		return
 	}
 
@@ -144,15 +144,6 @@ func parseID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 		return 0, false
 	}
 	return id, true
-}
-
-func writeJSON(w http.ResponseWriter, status int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		return
-	}
 }
 
 type addNoteTagsRequest struct {
