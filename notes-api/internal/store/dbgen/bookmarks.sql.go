@@ -146,6 +146,68 @@ func (q *Queries) ListBookmarks(ctx context.Context) ([]Bookmark, error) {
 	return items, nil
 }
 
+const searchBookmarks = `-- name: SearchBookmarks :many
+SELECT
+    b.id,
+    b.url,
+    b.title,
+    b.description,
+    b.created_at,
+    b.updated_at
+FROM bookmarks b
+WHERE
+    (
+        $1::text = ''
+        OR b.title ILIKE '%' || $1::text || '%'
+        OR b.description ILIKE '%' || $1::text || '%'
+        OR b.url ILIKE '%' || $1::text || '%'
+    )
+    AND
+    (
+        $2::text = ''
+        OR EXISTS (
+            SELECT 1
+            FROM bookmark_tags bt
+            JOIN tags t ON t.id = bt.tag_id
+            WHERE bt.bookmark_id = b.id
+              AND t.name = $2::text
+        )
+    )
+ORDER BY b.id DESC
+`
+
+type SearchBookmarksParams struct {
+	Search string
+	Tag    string
+}
+
+func (q *Queries) SearchBookmarks(ctx context.Context, arg SearchBookmarksParams) ([]Bookmark, error) {
+	rows, err := q.db.Query(ctx, searchBookmarks, arg.Search, arg.Tag)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Bookmark
+	for rows.Next() {
+		var i Bookmark
+		if err := rows.Scan(
+			&i.ID,
+			&i.Url,
+			&i.Title,
+			&i.Description,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateBookmark = `-- name: UpdateBookmark :one
 UPDATE bookmarks
 SET

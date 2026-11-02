@@ -21,6 +21,8 @@ type Querier interface {
 	GetNote(ctx context.Context, id int64) (Note, error)
 	ListBookmarks(ctx context.Context) ([]Bookmark, error)
 	ListNotes(ctx context.Context) ([]Note, error)
+	SearchBookmarks(ctx context.Context, arg SearchBookmarksParams) ([]Bookmark, error)
+	SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Note, error)
 	UpdateBookmark(ctx context.Context, arg UpdateBookmarkParams) (Bookmark, error)
 	UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, error)
 }

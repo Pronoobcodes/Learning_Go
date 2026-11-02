@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-
 type NotesHandler struct {
 	notesRepo store.NoteRepository
 }
@@ -51,15 +50,18 @@ func (h *NotesHandler) CreateNoteHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Failed to create note", http.StatusInternalServerError)
 		return
 	}
-	
+
 	writeJSON(w, http.StatusCreated, note)
 }
 
-
 func (h *NotesHandler) ListNotesHandler(w http.ResponseWriter, r *http.Request) {
-	notes, err := h.notesRepo.ListNotes(r.Context())
+	search := strings.TrimSpace(r.URL.Query().Get("search"))
+
+	tag := strings.TrimSpace(r.URL.Query().Get("tag"))
+
+	notes, err := h.notesRepo.SearchNotes(r.Context(), search, tag)
 	if err != nil {
-		http.Error(w, "Failed to list notes", http.StatusInternalServerError)
+		http.Error(w, "could not retrieve notes", http.StatusInternalServerError)
 		return
 	}
 
@@ -112,7 +114,7 @@ func (h *NotesHandler) UpdateNoteHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Failed to update note", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, note)	
+	writeJSON(w, http.StatusOK, note)
 }
 
 func (h *NotesHandler) DeleteNoteHandler(w http.ResponseWriter, r *http.Request) {
@@ -150,7 +152,7 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		return
-	} 
+	}
 }
 
 type addNoteTagsRequest struct {

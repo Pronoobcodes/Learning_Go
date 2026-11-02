@@ -143,6 +143,65 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 	return items, nil
 }
 
+const searchNotes = `-- name: SearchNotes :many
+SELECT
+    n.id,
+    n.title,
+    n.content,
+    n.created_at,
+    n.updated_at
+FROM notes n
+WHERE
+    (
+        $1::text = ''
+        OR n.title ILIKE '%' || $1::text || '%'
+        OR n.content ILIKE '%' || $1::text || '%'
+    )
+    AND
+    (
+        $2::text = ''
+        OR EXISTS (
+            SELECT 1
+            FROM note_tags nt
+            JOIN tags t ON t.id = nt.tag_id
+            WHERE nt.note_id = n.id
+              AND t.name = $2::text
+        )
+    )
+ORDER BY n.id DESC
+`
+
+type SearchNotesParams struct {
+	Search string
+	Tag    string
+}
+
+func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Note, error) {
+	rows, err := q.db.Query(ctx, searchNotes, arg.Search, arg.Tag)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Note
+	for rows.Next() {
+		var i Note
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateNote = `-- name: UpdateNote :one
 UPDATE notes
 SET

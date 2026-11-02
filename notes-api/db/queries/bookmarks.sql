@@ -65,3 +65,32 @@ VALUES (
         )
     )
 ON CONFLICT (bookmark_id, tag_id) DO NOTHING;
+
+-- name: SearchBookmarks :many
+SELECT
+    b.id,
+    b.url,
+    b.title,
+    b.description,
+    b.created_at,
+    b.updated_at
+FROM bookmarks b
+WHERE
+    (
+        sqlc.arg(search)::text = ''
+        OR b.title ILIKE '%' || sqlc.arg(search)::text || '%'
+        OR b.description ILIKE '%' || sqlc.arg(search)::text || '%'
+        OR b.url ILIKE '%' || sqlc.arg(search)::text || '%'
+    )
+    AND
+    (
+        sqlc.arg(tag)::text = ''
+        OR EXISTS (
+            SELECT 1
+            FROM bookmark_tags bt
+            JOIN tags t ON t.id = bt.tag_id
+            WHERE bt.bookmark_id = b.id
+              AND t.name = sqlc.arg(tag)::text
+        )
+    )
+ORDER BY b.id DESC;

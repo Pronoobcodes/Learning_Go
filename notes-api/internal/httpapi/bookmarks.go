@@ -56,9 +56,12 @@ func (h *BookmarksHandler) CreateBookmark(w http.ResponseWriter, r *http.Request
 }
 
 func (h *BookmarksHandler) ListBookmarks(w http.ResponseWriter, r *http.Request) {
-	bookmarks, err := h.bookmarks.ListBookmarks(r.Context())
+	search := strings.TrimSpace(r.URL.Query().Get("search"))
+	tag := strings.TrimSpace(r.URL.Query().Get("tag"))
+
+	bookmarks, err := h.bookmarks.SearchBookmarks(r.Context(), search, tag)
 	if err != nil {
-		http.Error(w, "Failed to list bookmarks", http.StatusInternalServerError)
+		http.Error(w, "could not retrieve bookmarks", http.StatusInternalServerError)
 		return
 	}
 
@@ -159,44 +162,44 @@ type addBookmarkTagsRequest struct {
 }
 
 func (b *BookmarksHandler) AddTags(w http.ResponseWriter, r *http.Request) {
-    bookmarkID, ok := parseID(w, r)
-    if !ok {
-        return
-    }
+	bookmarkID, ok := parseID(w, r)
+	if !ok {
+		return
+	}
 
-    var req addBookmarkTagsRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        http.Error(w, "invalid JSON body", http.StatusBadRequest)
-        return
-    }
+	var req addBookmarkTagsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
 
-    if len(req.Tags) == 0 {
-        http.Error(w, "tags must not be empty", http.StatusBadRequest)
-        return
-    }
+	if len(req.Tags) == 0 {
+		http.Error(w, "tags must not be empty", http.StatusBadRequest)
+		return
+	}
 
-    if _, err := b.bookmarks.GetBookmark(r.Context(), bookmarkID); errors.Is(err, pgx.ErrNoRows) {
-        http.Error(w, "bookmark not found", http.StatusNotFound)
-        return
-    } else if err != nil {
-        http.Error(w, "could not retrieve bookmark", http.StatusInternalServerError)
-        return
-    }
+	if _, err := b.bookmarks.GetBookmark(r.Context(), bookmarkID); errors.Is(err, pgx.ErrNoRows) {
+		http.Error(w, "bookmark not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, "could not retrieve bookmark", http.StatusInternalServerError)
+		return
+	}
 
-    for _, tag := range req.Tags {
-        tag = strings.TrimSpace(tag)
-        if tag == "" {
-            http.Error(w, "tag must not be empty", http.StatusBadRequest)
-            return
-        }
+	for _, tag := range req.Tags {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			http.Error(w, "tag must not be empty", http.StatusBadRequest)
+			return
+		}
 
-        if err := b.bookmarks.AddTagToBookmark(r.Context(), bookmarkID, tag); err != nil {
-            http.Error(w, "could not add tag to bookmark", http.StatusInternalServerError)
-            return
-        }
-    }
+		if err := b.bookmarks.AddTagToBookmark(r.Context(), bookmarkID, tag); err != nil {
+			http.Error(w, "could not add tag to bookmark", http.StatusInternalServerError)
+			return
+		}
+	}
 
-    writeJSON(w, http.StatusOK, map[string]string{
-        "message": "tags added successfully",
-    })
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "tags added successfully",
+	})
 }
