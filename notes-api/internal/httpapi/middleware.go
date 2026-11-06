@@ -44,11 +44,7 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 
 		if _, err := rand.Read(id[:]); err != nil {
 			log.Printf("could not generate request ID: %v", err)
-			http.Error(
-				w,
-				"could not generate request ID",
-				http.StatusInternalServerError,
-			)
+			http.Error(w, "could not generate request ID", http.StatusInternalServerError)
 			return
 		}
 
@@ -58,11 +54,7 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("X-Request-ID", requestID)
 
 		// Store it in the request context too.
-		ctx := context.WithValue(
-			r.Context(),
-			requestIDKey,
-			requestID,
-		)
+		ctx := context.WithValue(r.Context(), requestIDKey, requestID)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
