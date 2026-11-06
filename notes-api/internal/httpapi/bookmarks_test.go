@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
-	"notes-bookmarks-api/internal/store"
-	"notes-bookmarks-api/internal/store/dbgen"
+	"notes-api/internal/store"
+	"notes-api/internal/store/dbgen"
 )
 
 type fakeBookmarksRepository struct {
@@ -25,7 +25,7 @@ func (f *fakeBookmarksRepository) CreateBookmark(
 ) (dbgen.Bookmark, error) {
 	return dbgen.Bookmark{
 		ID:          1,
-		URL:         url,
+		Url:         url,
 		Title:       title,
 		Description: description,
 	}, nil
@@ -41,9 +41,17 @@ func (f *fakeBookmarksRepository) GetBookmark(
 
 	return dbgen.Bookmark{
 		ID:    id,
-		URL:   "https://example.com",
+		Url:   "https://example.com",
 		Title: "Example",
 	}, nil
+}
+
+func (f *fakeBookmarksRepository) SearchBookmarks(
+	ctx context.Context,
+	search string,
+	tag string,
+) ([]dbgen.Bookmark, error) {
+	return []dbgen.Bookmark{}, nil
 }
 
 func TestCreateBookmark(t *testing.T) {
@@ -64,7 +72,7 @@ func TestCreateBookmark(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.bookmarks.CreateBookmark(recorder, req)
+	handler.CreateBookmark(recorder, req)
 
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf(
@@ -129,7 +137,7 @@ func TestCreateBookmarkInvalidURL(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.Create(recorder, req)
+	handler.CreateBookmark(recorder, req)
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf(

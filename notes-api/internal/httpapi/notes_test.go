@@ -42,6 +42,10 @@ func (f *fakeNotesRepository) GetNote(ctx context.Context, id int64) (dbgen.Note
 	}, nil
 }
 
+func (f *fakeNotesRepository) SearchNotes(ctx context.Context, search string, tag string) ([]dbgen.Note, error) {
+	return []dbgen.Note{}, nil
+}
+
 func TestCreateNote(t *testing.T) {
 	repo := &fakeNotesRepository{}
 	handler := NewNotesHandler(repo)

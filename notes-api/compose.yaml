@@ -1,13 +1,11 @@
-
 services:
   db:
     image: postgres:17
-    container_name: notes-bookmarks-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: notes_bookmarks
       POSTGRES_USER: app
-      POSTGRES_PASSWORD: local_dev_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in notes-api/.env}
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
@@ -17,6 +15,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  api:
+    build: .
+    restart: unless-stopped
+    stop_grace_period: 15s
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in notes-api/.env}
+      PORT: "8080"
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:
