@@ -3,25 +3,29 @@ package httpapi
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
+	"notes-api/internal/service"
 	"notes-api/internal/store"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func NewChiRouter(
-	notesRepo store.NoteRepository,
+	notesService *service.NoteService,
 	bookmarksRepo store.BookmarkRepository,
 ) chi.Router {
 	router := chi.NewRouter()
 
-	notesHandler := NewNotesHandler(notesRepo)
+	// Construct handlers.
+	notesHandler := NewNotesHandler(notesService)
 	bookmarksHandler := NewBookmarksHandler(bookmarksRepo)
 
-	// Health check
+	// Health check.
 	router.Get("/health", healthHandler)
 
-	// Notes routes
+	// Notes routes.
 	router.Get("/notes", notesHandler.ListNotesHandler)
 	router.Post("/notes", notesHandler.CreateNoteHandler)
+
 	router.Route("/notes", func(r chi.Router) {
 		r.Get("/", notesHandler.ListNotesHandler)
 		r.Post("/", notesHandler.CreateNoteHandler)
@@ -33,9 +37,10 @@ func NewChiRouter(
 		r.Post("/{id}/tags", withChiPathParams(notesHandler.AddTags))
 	})
 
-	// Bookmark routes
+	// Bookmark routes.
 	router.Get("/bookmarks", bookmarksHandler.ListBookmarks)
 	router.Post("/bookmarks", bookmarksHandler.CreateBookmark)
+
 	router.Route("/bookmarks", func(r chi.Router) {
 		r.Get("/", bookmarksHandler.ListBookmarks)
 		r.Post("/", bookmarksHandler.CreateBookmark)
@@ -46,6 +51,7 @@ func NewChiRouter(
 
 		r.Post("/{id}/tags", withChiPathParams(bookmarksHandler.AddTags))
 	})
+
 	return router
 }
 

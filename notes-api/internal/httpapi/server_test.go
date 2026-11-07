@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"notes-api/internal/service"
 )
 
 func TestServerEndToEndNotesFlow(t *testing.T) {
@@ -12,7 +14,7 @@ func TestServerEndToEndNotesFlow(t *testing.T) {
 	notesRepo := &fakeNotesRepository{}
 	bookmarksRepo := &fakeBookmarksRepository{}
 
-	router := NewChiRouter(notesRepo, bookmarksRepo)
+	router := NewChiRouter(service.NewNoteService(notesRepo), bookmarksRepo)
 
 	// Apply the real middleware.
 	handler := RequestIDMiddleware(

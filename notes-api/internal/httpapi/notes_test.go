@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	"notes-api/internal/service"
 	"notes-api/internal/store"
 	"notes-api/internal/store/dbgen"
 )
@@ -48,7 +49,7 @@ func (f *fakeNotesRepository) SearchNotes(ctx context.Context, search string, ta
 
 func TestCreateNote(t *testing.T) {
 	repo := &fakeNotesRepository{}
-	handler := NewNotesHandler(repo)
+	handler := NewNotesHandler(service.NewNoteService(repo))
 
 	body := `{"title": "Test Note", "content": "This is a test note."}`
 
@@ -71,7 +72,7 @@ func TestGetNoteNotFound(t *testing.T) {
 		getErr: pgx.ErrNoRows,
 	}
 
-	handler := NewNotesHandler(repo)
+	handler := NewNotesHandler(service.NewNoteService(repo))
 
 	req := httptest.NewRequest(
 		http.MethodGet,
@@ -97,7 +98,7 @@ func TestGetNoteNotFound(t *testing.T) {
 
 func TestCreateNoteInvalidJSON(t *testing.T) {
 	repo := &fakeNotesRepository{}
-	handler := NewNotesHandler(repo)
+	handler := NewNotesHandler(service.NewNoteService(repo))
 
 	body := `{"title":`
 

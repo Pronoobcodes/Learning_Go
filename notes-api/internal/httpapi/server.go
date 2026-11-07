@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"notes-api/internal/service"
 	"notes-api/internal/store"
 )
 
@@ -11,8 +12,8 @@ func NewMux(notesRepo store.NoteRepository, bookmarksRepo store.BookmarkReposito
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 
-	notesHandler := NewNotesHandler(notesRepo)             // Replace nil with your actual NoteRepository implementation
-	bookmarksHandler := NewBookmarksHandler(bookmarksRepo) // Replace nil with your actual BookmarkRepository implementation
+	notesHandler := NewNotesHandler(service.NewNoteService(notesRepo))
+	bookmarksHandler := NewBookmarksHandler(bookmarksRepo)
 
 	mux.HandleFunc("/notes", notesHandler.ListNotesHandler)
 	mux.HandleFunc("GET /notes/{id}", notesHandler.GetNoteHandler)

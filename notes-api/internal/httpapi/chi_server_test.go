@@ -4,11 +4,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"notes-api/internal/service"
 )
 
 func TestChiRouterHealth(t *testing.T) {
 	router := NewChiRouter(
-		&fakeNotesRepository{},
+		service.NewNoteService(&fakeNotesRepository{}),
 		&fakeBookmarksRepository{},
 	)
 
@@ -28,7 +30,7 @@ func TestChiRouterHealth(t *testing.T) {
 
 func TestChiRouterNotesListRoutes(t *testing.T) {
 	router := NewChiRouter(
-		&fakeNotesRepository{},
+		service.NewNoteService(&fakeNotesRepository{}),
 		&fakeBookmarksRepository{},
 	)
 
@@ -55,7 +57,7 @@ func TestChiRouterNotesListRoutes(t *testing.T) {
 
 func TestChiRouterWithMiddleware(t *testing.T) {
 	router := NewChiRouter(
-		&fakeNotesRepository{},
+		service.NewNoteService(&fakeNotesRepository{}),
 		&fakeBookmarksRepository{},
 	)
 
