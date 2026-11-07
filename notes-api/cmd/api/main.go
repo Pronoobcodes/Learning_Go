@@ -34,15 +34,18 @@ func main() {
 	defer pool.Close()
 
 	// Initialize repositories.
+	// Initialize repositories.
 	queries := dbgen.New(pool)
+
 	notesRepo := store.NewNotes(queries)
 	bookmarksRepo := store.NewBookmarks(queries)
 
 	// Initialize services.
 	notesService := service.NewNoteService(notesRepo)
+	bookmarksService := service.NewBookmarkService(bookmarksRepo)
 
 	// Initialize router.
-	router := httpapi.NewChiRouter(notesService, bookmarksRepo)
+	router := httpapi.NewChiRouter(notesService, bookmarksService)
 
 	// Initialize HTTP server.
 	server := &http.Server{

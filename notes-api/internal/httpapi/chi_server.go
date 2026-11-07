@@ -11,13 +11,13 @@ import (
 
 func NewChiRouter(
 	notesService *service.NoteService,
-	bookmarksRepo store.BookmarkRepository,
+	bookmarksService *service.BookmarkService,
 ) chi.Router {
 	router := chi.NewRouter()
 
 	// Construct handlers.
 	notesHandler := NewNotesHandler(notesService)
-	bookmarksHandler := NewBookmarksHandler(bookmarksRepo)
+	bookmarksHandler := NewBookmarksHandler(bookmarksService)
 
 	// Health check.
 	router.Get("/health", healthHandler)
