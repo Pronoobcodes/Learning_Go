@@ -7,18 +7,16 @@ import (
 	"strconv"
 	"strings"
 
-	"notes-api/internal/store"
-
-	"github.com/jackc/pgx/v5"
+	"notes-api/internal/service"
 )
 
 type NotesHandler struct {
-	notesRepo store.NoteRepository
+	notesService *service.NoteService
 }
 
-func NewNotesHandler(notesRepo store.NoteRepository) *NotesHandler {
+func NewNotesHandler(notesService *service.NoteService) *NotesHandler {
 	return &NotesHandler{
-		notesRepo: notesRepo,
+		notesService: notesService,
 	}
 }
 
@@ -32,6 +30,10 @@ type updateNoteRequest struct {
 	Content string `json:"content"`
 }
 
+type addNoteTagsRequest struct {
+	Tag []string `json:"tags"`
+}
+
 func (h *NotesHandler) CreateNoteHandler(w http.ResponseWriter, r *http.Request) {
 	var req createNoteRequest
 
@@ -40,12 +42,11 @@ func (h *NotesHandler) CreateNoteHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if req.Title == "" || req.Content == "" {
-		http.Error(w, "Title and content are required", http.StatusBadRequest)
+	note, err := h.notesService.CreateNote(r.Context(), req.Title, req.Content)
+	if errors.Is(err, service.ErrInvalidNote) {
+		writeError(w, http.StatusBadRequest, "invalid_note", err.Error())
 		return
 	}
-
-	note, err := h.notesRepo.CreateNote(r.Context(), req.Title, req.Content)
 	if err != nil {
 		http.Error(w, "Failed to create note", http.StatusInternalServerError)
 		return
@@ -56,10 +57,9 @@ func (h *NotesHandler) CreateNoteHandler(w http.ResponseWriter, r *http.Request)
 
 func (h *NotesHandler) ListNotesHandler(w http.ResponseWriter, r *http.Request) {
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
-
 	tag := strings.TrimSpace(r.URL.Query().Get("tag"))
 
-	notes, err := h.notesRepo.SearchNotes(r.Context(), search, tag)
+	notes, err := h.notesService.ListNotes(r.Context(), search, tag)
 	if err != nil {
 		http.Error(w, "could not retrieve notes", http.StatusInternalServerError)
 		return
@@ -70,13 +70,12 @@ func (h *NotesHandler) ListNotesHandler(w http.ResponseWriter, r *http.Request) 
 
 func (h *NotesHandler) GetNoteHandler(w http.ResponseWriter, r *http.Request) {
 	id, ok := parseID(w, r)
-
 	if !ok {
 		return
 	}
 
-	notes, err := h.notesRepo.GetNote(r.Context(), id)
-	if errors.Is(err, pgx.ErrNoRows) {
+	note, err := h.notesService.GetNote(r.Context(), id)
+	if errors.Is(err, service.ErrNoteNotFound) {
 		http.Error(w, "Note not found", http.StatusNotFound)
 		return
 	}
@@ -85,7 +84,7 @@ func (h *NotesHandler) GetNoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, notes)
+	writeJSON(w, http.StatusOK, note)
 }
 
 func (h *NotesHandler) UpdateNoteHandler(w http.ResponseWriter, r *http.Request) {
@@ -95,18 +94,17 @@ func (h *NotesHandler) UpdateNoteHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	var req updateNoteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "request body is invalid")
 		return
 	}
 
-	if req.Title == "" || req.Content == "" {
-		http.Error(w, "Title and content are required", http.StatusBadRequest)
+	note, err := h.notesService.UpdateNote(r.Context(), id, req.Title, req.Content)
+	if errors.Is(err, service.ErrInvalidNote) {
+		writeError(w, http.StatusBadRequest, "invalid_note", err.Error())
 		return
 	}
-
-	note, err := h.notesRepo.UpdateNote(r.Context(), id, req.Title, req.Content)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, service.ErrNoteNotFound) {
 		http.Error(w, "Note not found", http.StatusNotFound)
 		return
 	}
@@ -114,6 +112,7 @@ func (h *NotesHandler) UpdateNoteHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Failed to update note", http.StatusInternalServerError)
 		return
 	}
+
 	writeJSON(w, http.StatusOK, note)
 }
 
@@ -123,31 +122,17 @@ func (h *NotesHandler) DeleteNoteHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	rows, err := h.notesRepo.DeleteNote(r.Context(), id)
+	err := h.notesService.DeleteNote(r.Context(), id)
+	if errors.Is(err, service.ErrNoteNotFound) {
+		http.Error(w, "Note not found", http.StatusNotFound)
+		return
+	}
 	if err != nil {
 		http.Error(w, "Failed to delete note", http.StatusInternalServerError)
 		return
 	}
 
-	if rows == 0 {
-		http.Error(w, "Note not found", http.StatusNotFound)
-		return
-	}
-
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func parseID(w http.ResponseWriter, r *http.Request) (int64, bool) {
-	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	if err != nil || id <= 0 {
-		http.Error(w, "Invalid note ID", http.StatusBadRequest)
-		return 0, false
-	}
-	return id, true
-}
-
-type addNoteTagsRequest struct {
-	Tag []string `json:"tags"`
 }
 
 func (h *NotesHandler) AddTags(w http.ResponseWriter, r *http.Request) {
@@ -157,29 +142,32 @@ func (h *NotesHandler) AddTags(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req addNoteTagsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "request body is invalid")
 		return
 	}
 
-	if len(req.Tag) == 0 {
-		http.Error(w, "At least one tag is required", http.StatusBadRequest)
+	err := h.notesService.AddTags(r.Context(), noteID, req.Tag)
+	if errors.Is(err, service.ErrNoteNotFound) {
+		http.Error(w, "Note not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_tags", err.Error())
 		return
 	}
 
-	for _, tag := range req.Tag {
-		tag = strings.TrimSpace(tag)
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "Tags added successfully",
+	})
+}
 
-		if tag == "" {
-			http.Error(w, "Tag cannot be empty", http.StatusBadRequest)
-			return
-		}
-
-		if err := h.notesRepo.AddTagToNote(r.Context(), noteID, tag); err != nil {
-			http.Error(w, "Failed to add tag to note", http.StatusInternalServerError)
-			return
-		}
+func parseID(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		http.Error(w, "Invalid note ID", http.StatusBadRequest)
+		return 0, false
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"message": "Tags added successfully"})
+	return id, true
 }
