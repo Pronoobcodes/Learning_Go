@@ -5,15 +5,15 @@ import (
 	"net/http"
 
 	"notes-api/internal/service"
-	"notes-api/internal/store"
+	// "notes-api/internal/store"
 )
 
-func NewMux(notesRepo store.NoteRepository, bookmarksRepo store.BookmarkRepository) *http.ServeMux {
+func NewRouter(notesService *service.NoteService, bookmarksService *service.BookmarkService) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 
-	notesHandler := NewNotesHandler(service.NewNoteService(notesRepo))
-	bookmarksHandler := NewBookmarksHandler(bookmarksRepo)
+	notesHandler := NewNotesHandler(notesService)
+	bookmarksHandler := NewBookmarksHandler(bookmarksService)
 
 	mux.HandleFunc("/notes", notesHandler.ListNotesHandler)
 	mux.HandleFunc("GET /notes/{id}", notesHandler.GetNoteHandler)

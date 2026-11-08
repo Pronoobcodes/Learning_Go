@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"notes-api/internal/service"
-	"notes-api/internal/store"
 
 	"github.com/go-chi/chi/v5"
 )

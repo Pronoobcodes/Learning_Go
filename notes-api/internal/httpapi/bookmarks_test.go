@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	"notes-api/internal/service"
 	"notes-api/internal/store"
 	"notes-api/internal/store/dbgen"
 )
@@ -56,7 +57,7 @@ func (f *fakeBookmarksRepository) SearchBookmarks(
 
 func TestCreateBookmark(t *testing.T) {
 	repo := &fakeBookmarksRepository{}
-	handler := NewBookmarksHandler(repo)
+	handler := NewBookmarksHandler(service.NewBookmarkService(repo))
 
 	body := `{
 		"url": "https://example.com",
@@ -96,7 +97,7 @@ func TestGetBookmarkNotFound(t *testing.T) {
 		getErr: pgx.ErrNoRows,
 	}
 
-	handler := NewBookmarksHandler(repo)
+	handler := NewBookmarksHandler(service.NewBookmarkService(repo))
 
 	req := httptest.NewRequest(
 		http.MethodGet,
@@ -121,7 +122,7 @@ func TestGetBookmarkNotFound(t *testing.T) {
 
 func TestCreateBookmarkInvalidURL(t *testing.T) {
 	repo := &fakeBookmarksRepository{}
-	handler := NewBookmarksHandler(repo)
+	handler := NewBookmarksHandler(service.NewBookmarkService(repo))
 
 	body := `{
 		"url": "not-a-valid-url",

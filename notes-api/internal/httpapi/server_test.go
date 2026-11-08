@@ -14,12 +14,10 @@ func TestServerEndToEndNotesFlow(t *testing.T) {
 	notesRepo := &fakeNotesRepository{}
 	bookmarksRepo := &fakeBookmarksRepository{}
 
-	router := NewChiRouter(service.NewNoteService(notesRepo), bookmarksRepo)
+	notesService := service.NewNoteService(notesRepo)
 
-	// Apply the real middleware.
-	handler := RequestIDMiddleware(
-		RequestLogger(router),
-	)
+	router := NewChiRouter(notesService, service.NewBookmarkService(bookmarksRepo))
+	handler := RequestIDMiddleware(RequestLogger(router))
 
 	healthRecorder := httptest.NewRecorder()
 	handler.ServeHTTP(healthRecorder, httptest.NewRequest(http.MethodGet, "/health", nil))

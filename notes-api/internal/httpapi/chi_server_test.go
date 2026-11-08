@@ -11,7 +11,7 @@ import (
 func TestChiRouterHealth(t *testing.T) {
 	router := NewChiRouter(
 		service.NewNoteService(&fakeNotesRepository{}),
-		&fakeBookmarksRepository{},
+		service.NewBookmarkService(&fakeBookmarksRepository{}),
 	)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
@@ -31,7 +31,7 @@ func TestChiRouterHealth(t *testing.T) {
 func TestChiRouterNotesListRoutes(t *testing.T) {
 	router := NewChiRouter(
 		service.NewNoteService(&fakeNotesRepository{}),
-		&fakeBookmarksRepository{},
+		service.NewBookmarkService(&fakeBookmarksRepository{}),
 	)
 
 	paths := []string{"/notes", "/notes/"}
@@ -58,7 +58,7 @@ func TestChiRouterNotesListRoutes(t *testing.T) {
 func TestChiRouterWithMiddleware(t *testing.T) {
 	router := NewChiRouter(
 		service.NewNoteService(&fakeNotesRepository{}),
-		&fakeBookmarksRepository{},
+		service.NewBookmarkService(&fakeBookmarksRepository{}),
 	)
 
 	handler := RequestIDMiddleware(
