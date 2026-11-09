@@ -15,10 +15,13 @@ type Querier interface {
 	// -- name: CountNotes :one
 	// SELECT COUNT(*)::BIGINT FROM notes;
 	CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteBookmark(ctx context.Context, id int64) (int64, error)
 	DeleteNote(ctx context.Context, id int64) (int64, error)
 	GetBookmark(ctx context.Context, id int64) (Bookmark, error)
 	GetNote(ctx context.Context, id int64) (Note, error)
+	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserByID(ctx context.Context, id int64) (User, error)
 	ListBookmarks(ctx context.Context) ([]Bookmark, error)
 	ListNotes(ctx context.Context) ([]Note, error)
 	SearchBookmarks(ctx context.Context, arg SearchBookmarksParams) ([]Bookmark, error)

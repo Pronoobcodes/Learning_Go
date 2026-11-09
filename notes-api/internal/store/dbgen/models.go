@@ -39,3 +39,10 @@ type Tag struct {
 	ID   int64
 	Name string
 }
+
+type User struct {
+	ID           int64
+	Email        string
+	PasswordHash string
+	CreatedAt    pgtype.Timestamptz
+}
