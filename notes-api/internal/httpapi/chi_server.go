@@ -11,15 +11,21 @@ import (
 func NewChiRouter(
 	notesService *service.NoteService,
 	bookmarksService *service.BookmarkService,
+	authService *service.AuthService,
 ) chi.Router {
 	router := chi.NewRouter()
 
 	// Construct handlers.
 	notesHandler := NewNotesHandler(notesService)
 	bookmarksHandler := NewBookmarksHandler(bookmarksService)
+	authHandler := NewAuthHandler(authService)
 
 	// Health check.
 	router.Get("/health", healthHandler)
+
+	// Auth routes.
+	router.Post("/auth/login", authHandler.LoginHandler)
+	router.Post("/auth/register", authHandler.RegisterHandler)
 
 	// Notes routes.
 	router.Get("/notes", notesHandler.ListNotesHandler)

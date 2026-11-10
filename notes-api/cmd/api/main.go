@@ -45,7 +45,8 @@ func main() {
 	bookmarksService := service.NewBookmarkService(bookmarksRepo)
 
 	// Initialize router.
-	router := httpapi.NewChiRouter(notesService, bookmarksService)
+	authService := service.NewAuthService()
+	router := httpapi.NewChiRouter(notesService, bookmarksService, authService)
 
 	// Initialize HTTP server.
 	server := &http.Server{

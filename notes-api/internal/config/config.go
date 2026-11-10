@@ -9,12 +9,18 @@ import (
 type Config struct {
 	Port        string
 	DatabaseURL string
+	JWTSecret   string
 }
 
 func Load() (Config, error) {
 	cfg := Config{
 		Port:        getEnv("PORT", "8080"),
 		DatabaseURL: strings.TrimSpace(os.Getenv("DATABASE_URL")),
+		JWTSecret:   strings.TrimSpace(os.Getenv("JWT_SECRET")),
+	}
+
+	if cfg.JWTSecret == "" {
+		return Config{}, errors.New("JWT_SECRET is required")
 	}
 
 	if cfg.DatabaseURL == "" {

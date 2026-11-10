@@ -124,3 +124,15 @@ func (s *AuthService) ValidateToken(tokenString string) (int64, error) {
 
 	return int64(userID), nil
 }
+
+func (s *AuthService) LoginWithToken(
+	ctx context.Context,
+	email, password string,
+) (string, error) {
+	user, err := s.Login(ctx, email, password)
+	if err != nil {
+		return "", err
+	}
+
+	return s.GenerateToken(user.ID)
+}

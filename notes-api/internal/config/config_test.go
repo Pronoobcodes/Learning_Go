@@ -6,6 +6,7 @@ import (
 
 func TestLoadUsesDefaultPort(t *testing.T) {
 	t.Setenv("PORT", "")
+	t.Setenv("JWT_SECRET", "test-secret")
 	t.Setenv("DATABASE_URL", "postgres://app:password@localhost:5433/notes_bookmarks?sslmode=disable")
 
 	cfg, err := Load()
@@ -20,6 +21,7 @@ func TestLoadUsesDefaultPort(t *testing.T) {
 
 func TestLoadUsesCustomPort(t *testing.T) {
 	t.Setenv("PORT", "9090")
+	t.Setenv("JWT_SECRET", "test-secret")
 	t.Setenv("DATABASE_URL", "postgres://app:password@localhost:5433/notes_bookmarks?sslmode=disable")
 
 	cfg, err := Load()
@@ -34,10 +36,21 @@ func TestLoadUsesCustomPort(t *testing.T) {
 
 func TestLoadRequiresDatabaseURL(t *testing.T) {
 	t.Setenv("PORT", "8080")
+	t.Setenv("JWT_SECRET", "test-secret")
 	t.Setenv("DATABASE_URL", "")
 
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected an error when DATABASE_URL is missing")
+	}
+}
+
+func TestLoadRequiresJWTSecret(t *testing.T) {
+	t.Setenv("DATABASE_URL", "test-database-url")
+	t.Setenv("JWT_SECRET", "")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected an error when JWT_SECRET is missing")
 	}
 }
