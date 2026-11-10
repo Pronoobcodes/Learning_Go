@@ -16,7 +16,7 @@ func TestServerEndToEndNotesFlow(t *testing.T) {
 
 	notesService := service.NewNoteService(notesRepo)
 
-	router := NewChiRouter(notesService, service.NewBookmarkService(bookmarksRepo))
+	router := NewChiRouter(notesService, service.NewBookmarkService(bookmarksRepo), nil)
 	handler := RequestIDMiddleware(RequestLogger(router))
 
 	healthRecorder := httptest.NewRecorder()

@@ -18,14 +18,15 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 	}
 }
 
-func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+type authRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+func (h *AuthHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	var request authRequest
+	if err := decodeJSON(r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_json", "request body is invalid")
 		return
 	}
 
@@ -36,22 +37,52 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidRegistration) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "invalid_registration", err.Error())
 			return
 		}
 
-		http.Error(w, "Could not register user", http.StatusInternalServerError)
+		http.Error(w, "could not register user", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-
-	json.NewEncoder(w).Encode(map[string]any{
+	writeJSON(w, http.StatusCreated, map[string]any{
 		"message": "Registration successful",
 		"user": map[string]any{
 			"id":    user.ID,
 			"email": user.Email,
 		},
+	})
+}
+
+func (h *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
+	var request struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.authService.LoginWithToken(
+		r.Context(),
+		request.Email,
+		request.Password,
+	)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidCredentials) {
+			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+			return
+		}
+
+		http.Error(w, "Login failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"message": "Login successful",
+		"token":   token,
 	})
 }

@@ -39,13 +39,14 @@ func main() {
 
 	notesRepo := store.NewNotes(queries)
 	bookmarksRepo := store.NewBookmarks(queries)
+	usersRepo := store.NewUsers(queries)
 
 	// Initialize services.
 	notesService := service.NewNoteService(notesRepo)
 	bookmarksService := service.NewBookmarkService(bookmarksRepo)
 
 	// Initialize router.
-	authService := service.NewAuthService()
+	authService := service.NewAuthService(usersRepo, []byte(cfg.JWTSecret))
 	router := httpapi.NewChiRouter(notesService, bookmarksService, authService)
 
 	// Initialize HTTP server.
