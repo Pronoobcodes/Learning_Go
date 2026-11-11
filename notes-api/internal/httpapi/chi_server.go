@@ -32,9 +32,6 @@ func NewChiRouter(
 		r.Use(AuthMiddleware(authService))
 
 		// Notes routes.
-		r.Get("/notes", notesHandler.ListNotesHandler)
-		r.Post("/notes", notesHandler.CreateNoteHandler)
-
 		r.Route("/notes", func(r chi.Router) {
 			r.Get("/", notesHandler.ListNotesHandler)
 			r.Post("/", notesHandler.CreateNoteHandler)
@@ -47,9 +44,6 @@ func NewChiRouter(
 		})
 
 		// Bookmark routes.
-		r.Get("/bookmarks", bookmarksHandler.ListBookmarks)
-		r.Post("/bookmarks", bookmarksHandler.CreateBookmark)
-
 		r.Route("/bookmarks", func(r chi.Router) {
 			r.Get("/", bookmarksHandler.ListBookmarks)
 			r.Post("/", bookmarksHandler.CreateBookmark)

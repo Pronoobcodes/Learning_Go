@@ -22,6 +22,7 @@ services:
     stop_grace_period: 15s
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in notes-api/.env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in notes-api/.env}
       PORT: "8080"
     ports:
       - "127.0.0.1:8080:8080"
