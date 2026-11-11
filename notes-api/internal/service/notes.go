@@ -16,13 +16,13 @@ var (
 )
 
 type NoteRepository interface {
-	CreateNote(ctx context.Context, title, content string) (dbgen.Note, error)
-	DeleteNote(ctx context.Context, id int64) (int64, error)
-	GetNote(ctx context.Context, id int64) (dbgen.Note, error)
-	ListNotes(ctx context.Context) ([]dbgen.Note, error)
-	UpdateNote(ctx context.Context, id int64, title, content string) (dbgen.Note, error)
-	AddTagToNote(ctx context.Context, noteID int64, tag string) error
-	SearchNotes(ctx context.Context, search, tag string) ([]dbgen.Note, error)
+	CreateNote(ctx context.Context, userID int64, title, content string) (dbgen.Note, error)
+	DeleteNote(ctx context.Context, userID, id int64) (int64, error)
+	GetNote(ctx context.Context, userID, id int64) (dbgen.Note, error)
+	ListNotes(ctx context.Context, userID int64) ([]dbgen.Note, error)
+	UpdateNote(ctx context.Context, userID, id int64, title, content string) (dbgen.Note, error)
+	AddTagToNote(ctx context.Context, userID, noteID int64, tag string) error
+	SearchNotes(ctx context.Context, userID int64, search, tag string) ([]dbgen.Note, error)
 }
 
 type NoteService struct {
@@ -37,6 +37,7 @@ func NewNoteService(repo NoteRepository) *NoteService {
 
 func (s *NoteService) CreateNote(
 	ctx context.Context,
+	userID int64,
 	title, content string,
 ) (dbgen.Note, error) {
 	title = strings.TrimSpace(title)
@@ -46,14 +47,15 @@ func (s *NoteService) CreateNote(
 		return dbgen.Note{}, ErrInvalidNote
 	}
 
-	return s.repo.CreateNote(ctx, title, content)
+	return s.repo.CreateNote(ctx, userID, title, content)
 }
 
 func (s *NoteService) GetNote(
 	ctx context.Context,
+	userID int64,
 	id int64,
 ) (dbgen.Note, error) {
-	note, err := s.repo.GetNote(ctx, id)
+	note, err := s.repo.GetNote(ctx, userID, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return dbgen.Note{}, ErrNoteNotFound
 	}
@@ -62,13 +64,15 @@ func (s *NoteService) GetNote(
 
 func (s *NoteService) ListNotes(
 	ctx context.Context,
+	userID int64,
 	search, tag string,
 ) ([]dbgen.Note, error) {
-	return s.repo.SearchNotes(ctx, search, tag)
+	return s.repo.SearchNotes(ctx, userID, search, tag)
 }
 
 func (s *NoteService) UpdateNote(
 	ctx context.Context,
+	userID int64,
 	id int64,
 	title, content string,
 ) (dbgen.Note, error) {
@@ -79,7 +83,7 @@ func (s *NoteService) UpdateNote(
 		return dbgen.Note{}, ErrInvalidNote
 	}
 
-	note, err := s.repo.UpdateNote(ctx, id, title, content)
+	note, err := s.repo.UpdateNote(ctx, userID, id, title, content)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return dbgen.Note{}, ErrNoteNotFound
 	}
@@ -89,9 +93,10 @@ func (s *NoteService) UpdateNote(
 
 func (s *NoteService) DeleteNote(
 	ctx context.Context,
+	userID int64,
 	id int64,
 ) error {
-	rows, err := s.repo.DeleteNote(ctx, id)
+	rows, err := s.repo.DeleteNote(ctx, userID, id)
 	if err != nil {
 		return err
 	}
@@ -105,6 +110,7 @@ func (s *NoteService) DeleteNote(
 
 func (s *NoteService) AddTags(
 	ctx context.Context,
+	userID int64,
 	noteID int64,
 	tags []string,
 ) error {
@@ -119,12 +125,16 @@ func (s *NoteService) AddTags(
 			return errors.New("tag cannot be empty")
 		}
 
-		if err := s.repo.AddTagToNote(ctx, noteID, tag); err != nil {
+		if err := s.repo.AddTagToNote(ctx, userID, noteID, tag); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return ErrNoteNotFound
 			}
 			return err
 		}
+	}
+
+	if _, err := s.GetNote(ctx, userID, noteID); err != nil {
+		return err
 	}
 
 	return nil

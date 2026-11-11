@@ -30,6 +30,7 @@ func TestBookmarksRepositoryCRUD(t *testing.T) {
 
 	queries := dbgen.New(pool)
 	repo := NewBookmarks(queries)
+	userID := createTestUser(t, ctx, pool, queries)
 
 	title := fmt.Sprintf("Integration test %d", time.Now().UnixNano())
 	url := "https://example.com"
@@ -38,6 +39,7 @@ func TestBookmarksRepositoryCRUD(t *testing.T) {
 	// CREATE
 	created, err := repo.CreateBookmark(
 		ctx,
+		userID,
 		url,
 		title,
 		description,
@@ -47,7 +49,7 @@ func TestBookmarksRepositoryCRUD(t *testing.T) {
 	}
 
 	defer func() {
-		_, _ = repo.DeleteBookmark(context.Background(), created.ID)
+		_, _ = repo.DeleteBookmark(context.Background(), userID, created.ID)
 	}()
 
 	if created.ID <= 0 {
@@ -59,7 +61,7 @@ func TestBookmarksRepositoryCRUD(t *testing.T) {
 	}
 
 	// READ
-	found, err := repo.GetBookmark(ctx, created.ID)
+	found, err := repo.GetBookmark(ctx, userID, created.ID)
 	if err != nil {
 		t.Fatalf("could not retrieve bookmark: %v", err)
 	}
@@ -75,6 +77,7 @@ func TestBookmarksRepositoryCRUD(t *testing.T) {
 
 	updated, err := repo.UpdateBookmark(
 		ctx,
+		userID,
 		created.ID,
 		updatedURL,
 		updatedTitle,
@@ -93,7 +96,7 @@ func TestBookmarksRepositoryCRUD(t *testing.T) {
 	}
 
 	// DELETE
-	rowsAffected, err := repo.DeleteBookmark(ctx, created.ID)
+	rowsAffected, err := repo.DeleteBookmark(ctx, userID, created.ID)
 	if err != nil {
 		t.Fatalf("could not delete bookmark: %v", err)
 	}
@@ -103,7 +106,7 @@ func TestBookmarksRepositoryCRUD(t *testing.T) {
 	}
 
 	// Confirm deletion.
-	_, err = repo.GetBookmark(ctx, created.ID)
+	_, err = repo.GetBookmark(ctx, userID, created.ID)
 	if err == nil {
 		t.Fatal("expected an error when retrieving a deleted bookmark")
 	}
@@ -129,11 +132,13 @@ func TestBookmarksRepositoryTagsAndSearch(t *testing.T) {
 
 	queries := dbgen.New(pool)
 	repo := NewBookmarks(queries)
+	userID := createTestUser(t, ctx, pool, queries)
 
 	title := fmt.Sprintf("Go Documentation Test %d", time.Now().UnixNano())
 
 	bookmark, err := repo.CreateBookmark(
 		ctx,
+		userID,
 		"https://go.dev",
 		title,
 		"Learning Go backend development",
@@ -143,18 +148,18 @@ func TestBookmarksRepositoryTagsAndSearch(t *testing.T) {
 	}
 
 	defer func() {
-		_, _ = repo.DeleteBookmark(context.Background(), bookmark.ID)
+		_, _ = repo.DeleteBookmark(context.Background(), userID, bookmark.ID)
 	}()
 
 	// Attach tags.
 	for _, tag := range []string{"go", "backend"} {
-		if err := repo.AddTagToBookmark(ctx, bookmark.ID, tag); err != nil {
+		if err := repo.AddTagToBookmark(ctx, userID, bookmark.ID, tag); err != nil {
 			t.Fatalf("could not attach tag %q: %v", tag, err)
 		}
 	}
 
 	// Search by text.
-	results, err := repo.SearchBookmarks(ctx, "Documentation", "")
+	results, err := repo.SearchBookmarks(ctx, userID, "Documentation", "")
 	if err != nil {
 		t.Fatalf("could not search bookmarks: %v", err)
 	}
@@ -164,7 +169,7 @@ func TestBookmarksRepositoryTagsAndSearch(t *testing.T) {
 	}
 
 	// Filter by tag.
-	results, err = repo.SearchBookmarks(ctx, "", "backend")
+	results, err = repo.SearchBookmarks(ctx, userID, "", "backend")
 	if err != nil {
 		t.Fatalf("could not filter bookmarks: %v", err)
 	}
@@ -174,7 +179,7 @@ func TestBookmarksRepositoryTagsAndSearch(t *testing.T) {
 	}
 
 	// Combine search and tag.
-	results, err = repo.SearchBookmarks(ctx, "Documentation", "backend")
+	results, err = repo.SearchBookmarks(ctx, userID, "Documentation", "backend")
 	if err != nil {
 		t.Fatalf("could not combine bookmark search and tag filter: %v", err)
 	}

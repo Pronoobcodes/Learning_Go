@@ -20,6 +20,7 @@ type fakeBookmarksRepository struct {
 
 func (f *fakeBookmarksRepository) CreateBookmark(
 	ctx context.Context,
+	userID int64,
 	url string,
 	title string,
 	description string,
@@ -34,7 +35,7 @@ func (f *fakeBookmarksRepository) CreateBookmark(
 
 func (f *fakeBookmarksRepository) GetBookmark(
 	ctx context.Context,
-	id int64,
+	userID, id int64,
 ) (dbgen.Bookmark, error) {
 	if f.getErr != nil {
 		return dbgen.Bookmark{}, f.getErr
@@ -49,6 +50,7 @@ func (f *fakeBookmarksRepository) GetBookmark(
 
 func (f *fakeBookmarksRepository) SearchBookmarks(
 	ctx context.Context,
+	userID int64,
 	search string,
 	tag string,
 ) ([]dbgen.Bookmark, error) {
@@ -73,7 +75,7 @@ func TestCreateBookmark(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.CreateBookmark(recorder, req)
+	handler.CreateBookmark(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf(
@@ -109,7 +111,7 @@ func TestGetBookmarkNotFound(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.GetBookmark(recorder, req)
+	handler.GetBookmark(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf(
@@ -138,7 +140,7 @@ func TestCreateBookmarkInvalidURL(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.CreateBookmark(recorder, req)
+	handler.CreateBookmark(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf(

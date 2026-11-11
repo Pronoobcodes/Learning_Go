@@ -15,6 +15,7 @@ type Bookmark struct {
 	Description string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
+	UserID      pgtype.Int8
 }
 
 type BookmarkTag struct {
@@ -28,6 +29,7 @@ type Note struct {
 	Content   string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+	UserID    pgtype.Int8
 }
 
 type NoteTag struct {

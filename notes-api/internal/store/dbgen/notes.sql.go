@@ -7,22 +7,35 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addTagToNote = `-- name: AddTagToNote :exec
 WITH inserted_tag AS (
     INSERT INTO tags (name)
-    VALUES ($2)
+    SELECT $2
+    WHERE EXISTS (
+        SELECT 1
+        FROM notes
+        WHERE notes.id = $1
+          AND notes.user_id = $3
+    )
     ON CONFLICT (name) DO NOTHING
     RETURNING id
 )
 INSERT INTO note_tags (note_id, tag_id)
-VALUES (
+SELECT
     $1,
     COALESCE(
         (SELECT id FROM inserted_tag),
         (SELECT id FROM tags WHERE tags.name = $2)
     )
+WHERE EXISTS (
+    SELECT 1
+    FROM notes
+    WHERE notes.id = $1
+      AND notes.user_id = $3
 )
 ON CONFLICT (note_id, tag_id) DO NOTHING
 `
@@ -30,10 +43,11 @@ ON CONFLICT (note_id, tag_id) DO NOTHING
 type AddTagToNoteParams struct {
 	NoteID int64
 	Name   string
+	UserID pgtype.Int8
 }
 
 func (q *Queries) AddTagToNote(ctx context.Context, arg AddTagToNoteParams) error {
-	_, err := q.db.Exec(ctx, addTagToNote, arg.NoteID, arg.Name)
+	_, err := q.db.Exec(ctx, addTagToNote, arg.NoteID, arg.Name, arg.UserID)
 	return err
 }
 
@@ -41,15 +55,13 @@ const createNote = `-- name: CreateNote :one
 
 
 INSERT INTO
-    notes (title, content)
-VALUES ($1, $2) RETURNING id,
-    title,
-    content,
-    created_at,
-    updated_at
+    notes (user_id, title, content)
+VALUES ($1, $2, $3)
+RETURNING id, title, content, created_at, updated_at, user_id
 `
 
 type CreateNoteParams struct {
+	UserID  pgtype.Int8
 	Title   string
 	Content string
 }
@@ -57,7 +69,7 @@ type CreateNoteParams struct {
 // -- name: CountNotes :one
 // SELECT COUNT(*)::BIGINT FROM notes;
 func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error) {
-	row := q.db.QueryRow(ctx, createNote, arg.Title, arg.Content)
+	row := q.db.QueryRow(ctx, createNote, arg.UserID, arg.Title, arg.Content)
 	var i Note
 	err := row.Scan(
 		&i.ID,
@@ -65,16 +77,23 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const deleteNote = `-- name: DeleteNote :execrows
-DELETE FROM notes WHERE id = $1
+DELETE FROM notes
+WHERE id = $1 AND user_id = $2
 `
 
-func (q *Queries) DeleteNote(ctx context.Context, id int64) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteNote, id)
+type DeleteNoteParams struct {
+	ID     int64
+	UserID pgtype.Int8
+}
+
+func (q *Queries) DeleteNote(ctx context.Context, arg DeleteNoteParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteNote, arg.ID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}
@@ -82,19 +101,17 @@ func (q *Queries) DeleteNote(ctx context.Context, id int64) (int64, error) {
 }
 
 const getNote = `-- name: GetNote :one
-SELECT
-    id,
-    title,
-    content,
-    created_at,
-    updated_at
-FROM notes
-WHERE
-    id = $1
+SELECT id, title, content, created_at, updated_at, user_id FROM notes
+WHERE id = $1 AND user_id = $2
 `
 
-func (q *Queries) GetNote(ctx context.Context, id int64) (Note, error) {
-	row := q.db.QueryRow(ctx, getNote, id)
+type GetNoteParams struct {
+	ID     int64
+	UserID pgtype.Int8
+}
+
+func (q *Queries) GetNote(ctx context.Context, arg GetNoteParams) (Note, error) {
+	row := q.db.QueryRow(ctx, getNote, arg.ID, arg.UserID)
 	var i Note
 	err := row.Scan(
 		&i.ID,
@@ -102,23 +119,19 @@ func (q *Queries) GetNote(ctx context.Context, id int64) (Note, error) {
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const listNotes = `-- name: ListNotes :many
-SELECT
-    id,
-    title,
-    content,
-    created_at,
-    updated_at
-FROM notes
-ORDER BY id DESC
+SELECT id, title, content, created_at, updated_at, user_id FROM notes
+WHERE user_id = $1
+ORDER BY created_at DESC
 `
 
-func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
-	rows, err := q.db.Query(ctx, listNotes)
+func (q *Queries) ListNotes(ctx context.Context, userID pgtype.Int8) ([]Note, error) {
+	rows, err := q.db.Query(ctx, listNotes, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +145,7 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 			&i.Content,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -144,40 +158,36 @@ func (q *Queries) ListNotes(ctx context.Context) ([]Note, error) {
 }
 
 const searchNotes = `-- name: SearchNotes :many
-SELECT
-    n.id,
-    n.title,
-    n.content,
-    n.created_at,
-    n.updated_at
-FROM notes n
+SELECT id, title, content, created_at, updated_at, user_id
+FROM notes
 WHERE
-    (
-        $1::text = ''
-        OR n.title ILIKE '%' || $1::text || '%'
-        OR n.content ILIKE '%' || $1::text || '%'
-    )
-    AND
-    (
+    user_id = $1
+    AND (
         $2::text = ''
+        OR title ILIKE '%' || $2::text || '%'
+        OR content ILIKE '%' || $2::text || '%'
+    )
+    AND (
+        $3::text = ''
         OR EXISTS (
             SELECT 1
             FROM note_tags nt
             JOIN tags t ON t.id = nt.tag_id
-            WHERE nt.note_id = n.id
-              AND t.name = $2::text
+            WHERE nt.note_id = notes.id
+              AND t.name = $3::text
         )
     )
-ORDER BY n.id DESC
+ORDER BY created_at DESC
 `
 
 type SearchNotesParams struct {
+	UserID pgtype.Int8
 	Search string
 	Tag    string
 }
 
 func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Note, error) {
-	rows, err := q.db.Query(ctx, searchNotes, arg.Search, arg.Tag)
+	rows, err := q.db.Query(ctx, searchNotes, arg.UserID, arg.Search, arg.Tag)
 	if err != nil {
 		return nil, err
 	}
@@ -191,6 +201,7 @@ func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Not
 			&i.Content,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -205,25 +216,29 @@ func (q *Queries) SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Not
 const updateNote = `-- name: UpdateNote :one
 UPDATE notes
 SET
-    title = $2,
-    content = $3,
-    updated_at = now()
+    title = $1,
+    content = $2,
+    updated_at = NOW()
 WHERE
-    id = $1 RETURNING id,
-    title,
-    content,
-    created_at,
-    updated_at
+    id = $3
+    AND user_id = $4
+RETURNING id, title, content, created_at, updated_at, user_id
 `
 
 type UpdateNoteParams struct {
-	ID      int64
 	Title   string
 	Content string
+	ID      int64
+	UserID  pgtype.Int8
 }
 
 func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, error) {
-	row := q.db.QueryRow(ctx, updateNote, arg.ID, arg.Title, arg.Content)
+	row := q.db.QueryRow(ctx, updateNote,
+		arg.Title,
+		arg.Content,
+		arg.ID,
+		arg.UserID,
+	)
 	var i Note
 	err := row.Scan(
 		&i.ID,
@@ -231,6 +246,7 @@ func (q *Queries) UpdateNote(ctx context.Context, arg UpdateNoteParams) (Note, e
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }

@@ -27,6 +27,11 @@ type addBookmarkTagsRequest struct {
 }
 
 func (h *BookmarksHandler) CreateBookmark(w http.ResponseWriter, r *http.Request) {
+	userID, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
 	var req bookmarkRequest
 
 	if err := decodeJSON(r, &req); err != nil {
@@ -36,6 +41,7 @@ func (h *BookmarksHandler) CreateBookmark(w http.ResponseWriter, r *http.Request
 
 	bookmark, err := h.bookmarksService.CreateBookmark(
 		r.Context(),
+		userID,
 		req.URL,
 		req.Title,
 		req.Description,
@@ -55,10 +61,15 @@ func (h *BookmarksHandler) CreateBookmark(w http.ResponseWriter, r *http.Request
 }
 
 func (h *BookmarksHandler) ListBookmarks(w http.ResponseWriter, r *http.Request) {
+	userID, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
 	tag := strings.TrimSpace(r.URL.Query().Get("tag"))
 
-	bookmarks, err := h.bookmarksService.ListBookmarks(r.Context(), search, tag)
+	bookmarks, err := h.bookmarksService.ListBookmarks(r.Context(), userID, search, tag)
 	if err != nil {
 		http.Error(w, "Could not retrieve bookmarks", http.StatusInternalServerError)
 		return
@@ -68,12 +79,17 @@ func (h *BookmarksHandler) ListBookmarks(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *BookmarksHandler) GetBookmark(w http.ResponseWriter, r *http.Request) {
+	userID, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
 	id, ok := parseID(w, r)
 	if !ok {
 		return
 	}
 
-	bookmark, err := h.bookmarksService.GetBookmark(r.Context(), id)
+	bookmark, err := h.bookmarksService.GetBookmark(r.Context(), userID, id)
 
 	if errors.Is(err, service.ErrBookmarkNotFound) {
 		http.Error(w, "Bookmark not found", http.StatusNotFound)
@@ -89,6 +105,11 @@ func (h *BookmarksHandler) GetBookmark(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BookmarksHandler) UpdateBookmark(w http.ResponseWriter, r *http.Request) {
+	userID, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
 	id, ok := parseID(w, r)
 	if !ok {
 		return
@@ -103,6 +124,7 @@ func (h *BookmarksHandler) UpdateBookmark(w http.ResponseWriter, r *http.Request
 
 	bookmark, err := h.bookmarksService.UpdateBookmark(
 		r.Context(),
+		userID,
 		id,
 		req.URL,
 		req.Title,
@@ -128,12 +150,17 @@ func (h *BookmarksHandler) UpdateBookmark(w http.ResponseWriter, r *http.Request
 }
 
 func (h *BookmarksHandler) DeleteBookmark(w http.ResponseWriter, r *http.Request) {
+	userID, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
 	id, ok := parseID(w, r)
 	if !ok {
 		return
 	}
 
-	err := h.bookmarksService.DeleteBookmark(r.Context(), id)
+	err := h.bookmarksService.DeleteBookmark(r.Context(), userID, id)
 
 	if errors.Is(err, service.ErrBookmarkNotFound) {
 		http.Error(w, "Bookmark not found", http.StatusNotFound)
@@ -149,6 +176,11 @@ func (h *BookmarksHandler) DeleteBookmark(w http.ResponseWriter, r *http.Request
 }
 
 func (h *BookmarksHandler) AddTags(w http.ResponseWriter, r *http.Request) {
+	userID, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
 	bookmarkID, ok := parseID(w, r)
 	if !ok {
 		return
@@ -161,7 +193,7 @@ func (h *BookmarksHandler) AddTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.bookmarksService.AddTags(r.Context(), bookmarkID, req.Tags)
+	err := h.bookmarksService.AddTags(r.Context(), userID, bookmarkID, req.Tags)
 
 	if errors.Is(err, service.ErrBookmarkNotFound) {
 		http.Error(w, "Bookmark not found", http.StatusNotFound)

@@ -24,6 +24,7 @@ type fakeBookmarkRepository struct {
 
 func (f *fakeBookmarkRepository) CreateBookmark(
 	ctx context.Context,
+	userID int64,
 	rawURL, title, description string,
 ) (dbgen.Bookmark, error) {
 	f.createCalled = true
@@ -35,27 +36,28 @@ func (f *fakeBookmarkRepository) CreateBookmark(
 
 func (f *fakeBookmarkRepository) DeleteBookmark(
 	ctx context.Context,
-	id int64,
+	userID, id int64,
 ) (int64, error) {
 	return f.deleteRows, f.deleteErr
 }
 
 func (f *fakeBookmarkRepository) GetBookmark(
 	ctx context.Context,
-	id int64,
+	userID, id int64,
 ) (dbgen.Bookmark, error) {
 	return dbgen.Bookmark{}, f.getErr
 }
 
 func (f *fakeBookmarkRepository) ListBookmarks(
 	ctx context.Context,
+	userID int64,
 ) ([]dbgen.Bookmark, error) {
 	return nil, nil
 }
 
 func (f *fakeBookmarkRepository) UpdateBookmark(
 	ctx context.Context,
-	id int64,
+	userID, id int64,
 	rawURL, title, description string,
 ) (dbgen.Bookmark, error) {
 	return dbgen.Bookmark{}, nil
@@ -63,6 +65,7 @@ func (f *fakeBookmarkRepository) UpdateBookmark(
 
 func (f *fakeBookmarkRepository) AddTagToBookmark(
 	ctx context.Context,
+	userID int64,
 	bookmarkID int64,
 	tag string,
 ) error {
@@ -72,6 +75,7 @@ func (f *fakeBookmarkRepository) AddTagToBookmark(
 
 func (f *fakeBookmarkRepository) SearchBookmarks(
 	ctx context.Context,
+	userID int64,
 	search, tag string,
 ) ([]dbgen.Bookmark, error) {
 	return nil, nil
@@ -117,6 +121,7 @@ func TestCreateBookmarkRejectsInvalidInput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := bookmarkService.CreateBookmark(
 				context.Background(),
+				1,
 				tt.url,
 				tt.title,
 				"description",
@@ -139,6 +144,7 @@ func TestCreateBookmarkTrimsInput(t *testing.T) {
 
 	_, err := bookmarkService.CreateBookmark(
 		context.Background(),
+		1,
 		"  https://example.com  ",
 		"  Example Website  ",
 		"A useful website",
@@ -188,6 +194,7 @@ func TestAddTagsRejectsInvalidTags(t *testing.T) {
 			err := bookmarkService.AddTags(
 				context.Background(),
 				1,
+				1,
 				tt.tags,
 			)
 
@@ -209,6 +216,7 @@ func TestAddTagsTrimsAndAddsValidTags(t *testing.T) {
 	err := bookmarkService.AddTags(
 		context.Background(),
 		1,
+		1,
 		[]string{" development ", " Go ", " backend "},
 	)
 
@@ -228,7 +236,7 @@ func TestGetBookmarkReturnsNotFound(t *testing.T) {
 
 	bookmarkService := NewBookmarkService(repo)
 
-	_, err := bookmarkService.GetBookmark(context.Background(), 999)
+	_, err := bookmarkService.GetBookmark(context.Background(), 1, 999)
 
 	if !errors.Is(err, ErrBookmarkNotFound) {
 		t.Errorf("expected ErrBookmarkNotFound, got %v", err)
@@ -244,7 +252,7 @@ func TestGetBookmarkReturnsRepositoryError(t *testing.T) {
 
 	bookmarkService := NewBookmarkService(repo)
 
-	_, err := bookmarkService.GetBookmark(context.Background(), 1)
+	_, err := bookmarkService.GetBookmark(context.Background(), 1, 1)
 
 	if !errors.Is(err, expectedErr) {
 		t.Errorf("expected repository error %v, got %v", expectedErr, err)
@@ -258,7 +266,7 @@ func TestDeleteBookmarkReturnsNotFound(t *testing.T) {
 
 	bookmarkService := NewBookmarkService(repo)
 
-	err := bookmarkService.DeleteBookmark(context.Background(), 999)
+	err := bookmarkService.DeleteBookmark(context.Background(), 1, 999)
 
 	if !errors.Is(err, ErrBookmarkNotFound) {
 		t.Errorf("expected ErrBookmarkNotFound, got %v", err)
@@ -274,7 +282,7 @@ func TestDeleteBookmarkReturnsRepositoryError(t *testing.T) {
 
 	bookmarkService := NewBookmarkService(repo)
 
-	err := bookmarkService.DeleteBookmark(context.Background(), 1)
+	err := bookmarkService.DeleteBookmark(context.Background(), 1, 1)
 
 	if !errors.Is(err, expectedErr) {
 		t.Errorf("expected repository error %v, got %v", expectedErr, err)
@@ -290,6 +298,7 @@ func TestAddTagsReturnsNotFoundForMissingBookmark(t *testing.T) {
 
 	err := bookmarkService.AddTags(
 		context.Background(),
+		1,
 		999,
 		[]string{"Go", "Backend"},
 	)

@@ -14,9 +14,10 @@ func TestServerEndToEndNotesFlow(t *testing.T) {
 	notesRepo := &fakeNotesRepository{}
 	bookmarksRepo := &fakeBookmarksRepository{}
 
+	authService, token := newTestAuthService(t)
 	notesService := service.NewNoteService(notesRepo)
 
-	router := NewChiRouter(notesService, service.NewBookmarkService(bookmarksRepo), nil)
+	router := NewChiRouter(notesService, service.NewBookmarkService(bookmarksRepo), authService)
 	handler := RequestIDMiddleware(RequestLogger(router))
 
 	healthRecorder := httptest.NewRecorder()
@@ -36,6 +37,7 @@ func TestServerEndToEndNotesFlow(t *testing.T) {
 		"/notes",
 		strings.NewReader(createBody),
 	)
+	createRequest.Header.Set("Authorization", "Bearer "+token)
 
 	createRecorder := httptest.NewRecorder()
 
@@ -56,7 +58,9 @@ func TestServerEndToEndNotesFlow(t *testing.T) {
 	}
 
 	notesRecorder := httptest.NewRecorder()
-	handler.ServeHTTP(notesRecorder, httptest.NewRequest(http.MethodGet, "/notes", nil))
+	notesRequest := httptest.NewRequest(http.MethodGet, "/notes", nil)
+	notesRequest.Header.Set("Authorization", "Bearer "+token)
+	handler.ServeHTTP(notesRecorder, notesRequest)
 	if notesRecorder.Code != http.StatusOK {
 		t.Fatalf("GET /notes: expected status %d, got %d", http.StatusOK, notesRecorder.Code)
 	}
@@ -67,6 +71,7 @@ func TestServerEndToEndNotesFlow(t *testing.T) {
 		"/notes/1",
 		nil,
 	)
+	getRequest.Header.Set("Authorization", "Bearer "+token)
 
 	getRecorder := httptest.NewRecorder()
 
@@ -90,17 +95,21 @@ func TestServerEndToEndNotesFlow(t *testing.T) {
 
 	bookmarkBody := `{"url":"https://example.com","title":"Example"}`
 	bookmarkRecorder := httptest.NewRecorder()
-	handler.ServeHTTP(bookmarkRecorder, httptest.NewRequest(
+	bookmarkRequest := httptest.NewRequest(
 		http.MethodPost,
 		"/bookmarks",
 		strings.NewReader(bookmarkBody),
-	))
+	)
+	bookmarkRequest.Header.Set("Authorization", "Bearer "+token)
+	handler.ServeHTTP(bookmarkRecorder, bookmarkRequest)
 	if bookmarkRecorder.Code != http.StatusCreated {
 		t.Fatalf("POST /bookmarks: expected status %d, got %d: %s", http.StatusCreated, bookmarkRecorder.Code, bookmarkRecorder.Body.String())
 	}
 
 	bookmarksRecorder := httptest.NewRecorder()
-	handler.ServeHTTP(bookmarksRecorder, httptest.NewRequest(http.MethodGet, "/bookmarks", nil))
+	bookmarksRequest := httptest.NewRequest(http.MethodGet, "/bookmarks", nil)
+	bookmarksRequest.Header.Set("Authorization", "Bearer "+token)
+	handler.ServeHTTP(bookmarksRecorder, bookmarksRequest)
 	if bookmarksRecorder.Code != http.StatusOK {
 		t.Fatalf("GET /bookmarks: expected status %d, got %d", http.StatusOK, bookmarksRecorder.Code)
 	}

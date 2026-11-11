@@ -6,6 +6,8 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -16,14 +18,14 @@ type Querier interface {
 	// SELECT COUNT(*)::BIGINT FROM notes;
 	CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
-	DeleteBookmark(ctx context.Context, id int64) (int64, error)
-	DeleteNote(ctx context.Context, id int64) (int64, error)
-	GetBookmark(ctx context.Context, id int64) (Bookmark, error)
-	GetNote(ctx context.Context, id int64) (Note, error)
+	DeleteBookmark(ctx context.Context, arg DeleteBookmarkParams) (int64, error)
+	DeleteNote(ctx context.Context, arg DeleteNoteParams) (int64, error)
+	GetBookmark(ctx context.Context, arg GetBookmarkParams) (Bookmark, error)
+	GetNote(ctx context.Context, arg GetNoteParams) (Note, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
-	ListBookmarks(ctx context.Context) ([]Bookmark, error)
-	ListNotes(ctx context.Context) ([]Note, error)
+	ListBookmarks(ctx context.Context, userID pgtype.Int8) ([]Bookmark, error)
+	ListNotes(ctx context.Context, userID pgtype.Int8) ([]Note, error)
 	SearchBookmarks(ctx context.Context, arg SearchBookmarksParams) ([]Bookmark, error)
 	SearchNotes(ctx context.Context, arg SearchNotesParams) ([]Note, error)
 	UpdateBookmark(ctx context.Context, arg UpdateBookmarkParams) (Bookmark, error)

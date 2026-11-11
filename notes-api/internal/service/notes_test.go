@@ -20,6 +20,7 @@ type fakeNoteRepository struct {
 
 func (f *fakeNoteRepository) CreateNote(
 	ctx context.Context,
+	userID int64,
 	title, content string,
 ) (dbgen.Note, error) {
 	f.createCalled = true
@@ -28,20 +29,21 @@ func (f *fakeNoteRepository) CreateNote(
 	return dbgen.Note{}, nil
 }
 
-func (f *fakeNoteRepository) DeleteNote(ctx context.Context, id int64) (int64, error) {
+func (f *fakeNoteRepository) DeleteNote(ctx context.Context, userID, id int64) (int64, error) {
 	return 1, nil
 }
 
-func (f *fakeNoteRepository) GetNote(ctx context.Context, id int64) (dbgen.Note, error) {
+func (f *fakeNoteRepository) GetNote(ctx context.Context, userID, id int64) (dbgen.Note, error) {
 	return dbgen.Note{}, f.getErr
 }
 
-func (f *fakeNoteRepository) ListNotes(ctx context.Context) ([]dbgen.Note, error) {
+func (f *fakeNoteRepository) ListNotes(ctx context.Context, userID int64) ([]dbgen.Note, error) {
 	return nil, nil
 }
 
 func (f *fakeNoteRepository) UpdateNote(
 	ctx context.Context,
+	userID int64,
 	id int64,
 	title, content string,
 ) (dbgen.Note, error) {
@@ -50,6 +52,7 @@ func (f *fakeNoteRepository) UpdateNote(
 
 func (f *fakeNoteRepository) AddTagToNote(
 	ctx context.Context,
+	userID int64,
 	noteID int64,
 	tag string,
 ) error {
@@ -58,6 +61,7 @@ func (f *fakeNoteRepository) AddTagToNote(
 
 func (f *fakeNoteRepository) SearchNotes(
 	ctx context.Context,
+	userID int64,
 	search, tag string,
 ) ([]dbgen.Note, error) {
 	return nil, nil
@@ -98,6 +102,7 @@ func TestCreateNoteRejectsEmptyInput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := noteService.CreateNote(
 				context.Background(),
+				1,
 				tt.title,
 				tt.content,
 			)
@@ -119,6 +124,7 @@ func TestCreateNoteTrimsInput(t *testing.T) {
 
 	_, err := noteService.CreateNote(
 		context.Background(),
+		1,
 		"  Learning Go  ",
 		"  Learning service architecture  ",
 	)
@@ -147,7 +153,7 @@ func TestGetNoteReturnsNotFound(t *testing.T) {
 
 	noteService := NewNoteService(repo)
 
-	_, err := noteService.GetNote(context.Background(), 999)
+	_, err := noteService.GetNote(context.Background(), 1, 999)
 
 	if !errors.Is(err, ErrNoteNotFound) {
 		t.Errorf("expected ErrNoteNotFound, got %v", err)
@@ -163,7 +169,7 @@ func TestGetNoteReturnsRepositoryError(t *testing.T) {
 
 	noteService := NewNoteService(repo)
 
-	_, err := noteService.GetNote(context.Background(), 1)
+	_, err := noteService.GetNote(context.Background(), 1, 1)
 
 	if !errors.Is(err, expectedErr) {
 		t.Errorf("expected repository error %v, got %v", expectedErr, err)

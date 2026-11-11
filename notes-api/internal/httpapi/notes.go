@@ -34,6 +34,11 @@ type addNoteTagsRequest struct {
 }
 
 func (h *NotesHandler) CreateNoteHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
 	var req createNoteRequest
 
 	if err := decodeJSON(r, &req); err != nil {
@@ -41,7 +46,7 @@ func (h *NotesHandler) CreateNoteHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	note, err := h.notesService.CreateNote(r.Context(), req.Title, req.Content)
+	note, err := h.notesService.CreateNote(r.Context(), userID, req.Title, req.Content)
 	if errors.Is(err, service.ErrInvalidNote) {
 		writeError(w, http.StatusBadRequest, "invalid_note", err.Error())
 		return
@@ -55,10 +60,15 @@ func (h *NotesHandler) CreateNoteHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *NotesHandler) ListNotesHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
 	search := strings.TrimSpace(r.URL.Query().Get("search"))
 	tag := strings.TrimSpace(r.URL.Query().Get("tag"))
 
-	notes, err := h.notesService.ListNotes(r.Context(), search, tag)
+	notes, err := h.notesService.ListNotes(r.Context(), userID, search, tag)
 	if err != nil {
 		http.Error(w, "could not retrieve notes", http.StatusInternalServerError)
 		return
@@ -68,12 +78,17 @@ func (h *NotesHandler) ListNotesHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *NotesHandler) GetNoteHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
 	id, ok := parseID(w, r)
 	if !ok {
 		return
 	}
 
-	note, err := h.notesService.GetNote(r.Context(), id)
+	note, err := h.notesService.GetNote(r.Context(), userID, id)
 	if errors.Is(err, service.ErrNoteNotFound) {
 		http.Error(w, "Note not found", http.StatusNotFound)
 		return
@@ -87,6 +102,11 @@ func (h *NotesHandler) GetNoteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *NotesHandler) UpdateNoteHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
 	id, ok := parseID(w, r)
 	if !ok {
 		return
@@ -98,7 +118,7 @@ func (h *NotesHandler) UpdateNoteHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	note, err := h.notesService.UpdateNote(r.Context(), id, req.Title, req.Content)
+	note, err := h.notesService.UpdateNote(r.Context(), userID, id, req.Title, req.Content)
 	if errors.Is(err, service.ErrInvalidNote) {
 		writeError(w, http.StatusBadRequest, "invalid_note", err.Error())
 		return
@@ -116,12 +136,17 @@ func (h *NotesHandler) UpdateNoteHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *NotesHandler) DeleteNoteHandler(w http.ResponseWriter, r *http.Request) {
+	userID, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
 	id, ok := parseID(w, r)
 	if !ok {
 		return
 	}
 
-	err := h.notesService.DeleteNote(r.Context(), id)
+	err := h.notesService.DeleteNote(r.Context(), userID, id)
 	if errors.Is(err, service.ErrNoteNotFound) {
 		http.Error(w, "Note not found", http.StatusNotFound)
 		return
@@ -135,6 +160,11 @@ func (h *NotesHandler) DeleteNoteHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *NotesHandler) AddTags(w http.ResponseWriter, r *http.Request) {
+	userID, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
 	noteID, ok := parseID(w, r)
 	if !ok {
 		return
@@ -146,7 +176,7 @@ func (h *NotesHandler) AddTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.notesService.AddTags(r.Context(), noteID, req.Tag)
+	err := h.notesService.AddTags(r.Context(), userID, noteID, req.Tag)
 	if errors.Is(err, service.ErrNoteNotFound) {
 		http.Error(w, "Note not found", http.StatusNotFound)
 		return

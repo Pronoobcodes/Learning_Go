@@ -7,55 +7,71 @@ package dbgen
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addTagToBookmark = `-- name: AddTagToBookmark :exec
 WITH inserted_tag AS (
     INSERT INTO tags (name)
-    VALUES ($2)
+    SELECT $2
+    WHERE EXISTS (
+        SELECT 1
+        FROM bookmarks
+        WHERE bookmarks.id = $1
+          AND bookmarks.user_id = $3
+    )
     ON CONFLICT (name) DO NOTHING
     RETURNING id
 )
 INSERT INTO bookmark_tags (bookmark_id, tag_id)
-VALUES (
+SELECT
         $1,
         COALESCE(
             (SELECT id FROM inserted_tag),
             (SELECT id FROM tags WHERE tags.name = $2)
         )
-    )
+WHERE EXISTS (
+    SELECT 1
+    FROM bookmarks
+    WHERE bookmarks.id = $1
+      AND bookmarks.user_id = $3
+)
 ON CONFLICT (bookmark_id, tag_id) DO NOTHING
 `
 
 type AddTagToBookmarkParams struct {
 	BookmarkID int64
 	Name       string
+	UserID     pgtype.Int8
 }
 
 func (q *Queries) AddTagToBookmark(ctx context.Context, arg AddTagToBookmarkParams) error {
-	_, err := q.db.Exec(ctx, addTagToBookmark, arg.BookmarkID, arg.Name)
+	_, err := q.db.Exec(ctx, addTagToBookmark, arg.BookmarkID, arg.Name, arg.UserID)
 	return err
 }
 
 const createBookmark = `-- name: CreateBookmark :one
 INSERT INTO
-    bookmarks (url, title, description)
-VALUES ($1, $2, $3) RETURNING id,
-    url,
-    title,
-    description,
-    created_at,
-    updated_at
+    bookmarks (user_id, url, title, description)
+VALUES ($1, $2, $3, $4)
+RETURNING id, url, title, description, created_at, updated_at, user_id
 `
 
 type CreateBookmarkParams struct {
+	UserID      pgtype.Int8
 	Url         string
 	Title       string
 	Description string
 }
 
 func (q *Queries) CreateBookmark(ctx context.Context, arg CreateBookmarkParams) (Bookmark, error) {
-	row := q.db.QueryRow(ctx, createBookmark, arg.Url, arg.Title, arg.Description)
+	row := q.db.QueryRow(ctx, createBookmark,
+		arg.UserID,
+		arg.Url,
+		arg.Title,
+		arg.Description,
+	)
 	var i Bookmark
 	err := row.Scan(
 		&i.ID,
@@ -64,16 +80,23 @@ func (q *Queries) CreateBookmark(ctx context.Context, arg CreateBookmarkParams) 
 		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const deleteBookmark = `-- name: DeleteBookmark :execrows
-DELETE FROM bookmarks WHERE id = $1
+DELETE FROM bookmarks
+WHERE id = $1 AND user_id = $2
 `
 
-func (q *Queries) DeleteBookmark(ctx context.Context, id int64) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteBookmark, id)
+type DeleteBookmarkParams struct {
+	ID     int64
+	UserID pgtype.Int8
+}
+
+func (q *Queries) DeleteBookmark(ctx context.Context, arg DeleteBookmarkParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteBookmark, arg.ID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}
@@ -81,20 +104,17 @@ func (q *Queries) DeleteBookmark(ctx context.Context, id int64) (int64, error) {
 }
 
 const getBookmark = `-- name: GetBookmark :one
-SELECT
-    id,
-    url,
-    title,
-    description,
-    created_at,
-    updated_at
-FROM bookmarks
-WHERE
-    id = $1
+SELECT id, url, title, description, created_at, updated_at, user_id FROM bookmarks
+WHERE id = $1 AND user_id = $2
 `
 
-func (q *Queries) GetBookmark(ctx context.Context, id int64) (Bookmark, error) {
-	row := q.db.QueryRow(ctx, getBookmark, id)
+type GetBookmarkParams struct {
+	ID     int64
+	UserID pgtype.Int8
+}
+
+func (q *Queries) GetBookmark(ctx context.Context, arg GetBookmarkParams) (Bookmark, error) {
+	row := q.db.QueryRow(ctx, getBookmark, arg.ID, arg.UserID)
 	var i Bookmark
 	err := row.Scan(
 		&i.ID,
@@ -103,24 +123,19 @@ func (q *Queries) GetBookmark(ctx context.Context, id int64) (Bookmark, error) {
 		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const listBookmarks = `-- name: ListBookmarks :many
-SELECT
-    id,
-    url,
-    title,
-    description,
-    created_at,
-    updated_at
-FROM bookmarks
+SELECT id, url, title, description, created_at, updated_at, user_id FROM bookmarks
+WHERE user_id = $1
 ORDER BY id DESC
 `
 
-func (q *Queries) ListBookmarks(ctx context.Context) ([]Bookmark, error) {
-	rows, err := q.db.Query(ctx, listBookmarks)
+func (q *Queries) ListBookmarks(ctx context.Context, userID pgtype.Int8) ([]Bookmark, error) {
+	rows, err := q.db.Query(ctx, listBookmarks, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +150,7 @@ func (q *Queries) ListBookmarks(ctx context.Context) ([]Bookmark, error) {
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -147,42 +163,39 @@ func (q *Queries) ListBookmarks(ctx context.Context) ([]Bookmark, error) {
 }
 
 const searchBookmarks = `-- name: SearchBookmarks :many
-SELECT
-    b.id,
-    b.url,
-    b.title,
-    b.description,
-    b.created_at,
-    b.updated_at
+SELECT b.id, b.url, b.title, b.description, b.created_at, b.updated_at, b.user_id
 FROM bookmarks b
 WHERE
-    (
-        $1::text = ''
-        OR b.title ILIKE '%' || $1::text || '%'
-        OR b.description ILIKE '%' || $1::text || '%'
-        OR b.url ILIKE '%' || $1::text || '%'
-    )
+    b.user_id = $1
     AND
     (
         $2::text = ''
+        OR b.title ILIKE '%' || $2::text || '%'
+        OR b.description ILIKE '%' || $2::text || '%'
+        OR b.url ILIKE '%' || $2::text || '%'
+    )
+    AND
+    (
+        $3::text = ''
         OR EXISTS (
             SELECT 1
             FROM bookmark_tags bt
             JOIN tags t ON t.id = bt.tag_id
             WHERE bt.bookmark_id = b.id
-              AND t.name = $2::text
+              AND t.name = $3::text
         )
     )
 ORDER BY b.id DESC
 `
 
 type SearchBookmarksParams struct {
+	UserID pgtype.Int8
 	Search string
 	Tag    string
 }
 
 func (q *Queries) SearchBookmarks(ctx context.Context, arg SearchBookmarksParams) ([]Bookmark, error) {
-	rows, err := q.db.Query(ctx, searchBookmarks, arg.Search, arg.Tag)
+	rows, err := q.db.Query(ctx, searchBookmarks, arg.UserID, arg.Search, arg.Tag)
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +210,7 @@ func (q *Queries) SearchBookmarks(ctx context.Context, arg SearchBookmarksParams
 			&i.Description,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -211,32 +225,31 @@ func (q *Queries) SearchBookmarks(ctx context.Context, arg SearchBookmarksParams
 const updateBookmark = `-- name: UpdateBookmark :one
 UPDATE bookmarks
 SET
-    url = $2,
-    title = $3,
-    description = $4,
+    url = $1,
+    title = $2,
+    description = $3,
     updated_at = now()
 WHERE
-    id = $1 RETURNING id,
-    url,
-    title,
-    description,
-    created_at,
-    updated_at
+    id = $4
+    AND user_id = $5
+RETURNING id, url, title, description, created_at, updated_at, user_id
 `
 
 type UpdateBookmarkParams struct {
-	ID          int64
 	Url         string
 	Title       string
 	Description string
+	ID          int64
+	UserID      pgtype.Int8
 }
 
 func (q *Queries) UpdateBookmark(ctx context.Context, arg UpdateBookmarkParams) (Bookmark, error) {
 	row := q.db.QueryRow(ctx, updateBookmark,
-		arg.ID,
 		arg.Url,
 		arg.Title,
 		arg.Description,
+		arg.ID,
+		arg.UserID,
 	)
 	var i Bookmark
 	err := row.Scan(
@@ -246,6 +259,7 @@ func (q *Queries) UpdateBookmark(ctx context.Context, arg UpdateBookmarkParams) 
 		&i.Description,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.UserID,
 	)
 	return i, err
 }

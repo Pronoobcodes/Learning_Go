@@ -18,13 +18,13 @@ var (
 )
 
 type BookmarkRepository interface {
-	CreateBookmark(ctx context.Context, url, title, description string) (dbgen.Bookmark, error)
-	DeleteBookmark(ctx context.Context, id int64) (int64, error)
-	GetBookmark(ctx context.Context, id int64) (dbgen.Bookmark, error)
-	ListBookmarks(ctx context.Context) ([]dbgen.Bookmark, error)
-	UpdateBookmark(ctx context.Context, id int64, url, title, description string) (dbgen.Bookmark, error)
-	AddTagToBookmark(ctx context.Context, bookmarkID int64, tag string) error
-	SearchBookmarks(ctx context.Context, search, tag string) ([]dbgen.Bookmark, error)
+	CreateBookmark(ctx context.Context, userID int64, url, title, description string) (dbgen.Bookmark, error)
+	DeleteBookmark(ctx context.Context, userID, id int64) (int64, error)
+	GetBookmark(ctx context.Context, userID, id int64) (dbgen.Bookmark, error)
+	ListBookmarks(ctx context.Context, userID int64) ([]dbgen.Bookmark, error)
+	UpdateBookmark(ctx context.Context, userID, id int64, url, title, description string) (dbgen.Bookmark, error)
+	AddTagToBookmark(ctx context.Context, userID, bookmarkID int64, tag string) error
+	SearchBookmarks(ctx context.Context, userID int64, search, tag string) ([]dbgen.Bookmark, error)
 }
 
 type BookmarkService struct {
@@ -39,6 +39,7 @@ func NewBookmarkService(repo BookmarkRepository) *BookmarkService {
 
 func (s *BookmarkService) CreateBookmark(
 	ctx context.Context,
+	userID int64,
 	rawURL, title, description string,
 ) (dbgen.Bookmark, error) {
 	rawURL = strings.TrimSpace(rawURL)
@@ -48,14 +49,15 @@ func (s *BookmarkService) CreateBookmark(
 		return dbgen.Bookmark{}, ErrInvalidBookmark
 	}
 
-	return s.repo.CreateBookmark(ctx, rawURL, title, description)
+	return s.repo.CreateBookmark(ctx, userID, rawURL, title, description)
 }
 
 func (s *BookmarkService) GetBookmark(
 	ctx context.Context,
+	userID int64,
 	id int64,
 ) (dbgen.Bookmark, error) {
-	bookmark, err := s.repo.GetBookmark(ctx, id)
+	bookmark, err := s.repo.GetBookmark(ctx, userID, id)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return dbgen.Bookmark{}, ErrBookmarkNotFound
@@ -66,13 +68,15 @@ func (s *BookmarkService) GetBookmark(
 
 func (s *BookmarkService) ListBookmarks(
 	ctx context.Context,
+	userID int64,
 	search, tag string,
 ) ([]dbgen.Bookmark, error) {
-	return s.repo.SearchBookmarks(ctx, search, tag)
+	return s.repo.SearchBookmarks(ctx, userID, search, tag)
 }
 
 func (s *BookmarkService) UpdateBookmark(
 	ctx context.Context,
+	userID int64,
 	id int64,
 	rawURL, title, description string,
 ) (dbgen.Bookmark, error) {
@@ -84,7 +88,7 @@ func (s *BookmarkService) UpdateBookmark(
 	}
 
 	bookmark, err := s.repo.UpdateBookmark(
-		ctx, id, rawURL, title, description,
+		ctx, userID, id, rawURL, title, description,
 	)
 
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -96,9 +100,10 @@ func (s *BookmarkService) UpdateBookmark(
 
 func (s *BookmarkService) DeleteBookmark(
 	ctx context.Context,
+	userID int64,
 	id int64,
 ) error {
-	rows, err := s.repo.DeleteBookmark(ctx, id)
+	rows, err := s.repo.DeleteBookmark(ctx, userID, id)
 	if err != nil {
 		return err
 	}
@@ -112,6 +117,7 @@ func (s *BookmarkService) DeleteBookmark(
 
 func (s *BookmarkService) AddTags(
 	ctx context.Context,
+	userID int64,
 	bookmarkID int64,
 	tags []string,
 ) error {
@@ -133,13 +139,13 @@ func (s *BookmarkService) AddTags(
 	}
 
 	// Confirm that the bookmark exists.
-	_, err := s.GetBookmark(ctx, bookmarkID)
+	_, err := s.GetBookmark(ctx, userID, bookmarkID)
 	if err != nil {
 		return err
 	}
 
 	for _, tag := range cleanTags {
-		if err := s.repo.AddTagToBookmark(ctx, bookmarkID, tag); err != nil {
+		if err := s.repo.AddTagToBookmark(ctx, userID, bookmarkID, tag); err != nil {
 			return err
 		}
 	}

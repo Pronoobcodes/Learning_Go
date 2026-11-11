@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"notes-api/internal/store/dbgen"
 )
 
@@ -30,20 +31,21 @@ func TestNotesRepositoryCRUD(t *testing.T) {
 
 	queries := dbgen.New(pool)
 	repo := NewNotes(queries)
+	userID := createTestUser(t, ctx, pool, queries)
 
 	// Use a unique title so repeated test runs don't collide.
 	title := fmt.Sprintf("Integration test %d", time.Now().UnixNano())
 	content := "Testing PostgreSQL repository operations"
 
 	// CREATE
-	created, err := repo.CreateNote(ctx, title, content)
+	created, err := repo.CreateNote(ctx, userID, title, content)
 	if err != nil {
 		t.Fatalf("could not create note: %v", err)
 	}
 
 	// Clean up the record even if a later assertion fails.
 	defer func() {
-		_, _ = repo.DeleteNote(context.Background(), created.ID)
+		_, _ = repo.DeleteNote(context.Background(), userID, created.ID)
 	}()
 
 	if created.ID <= 0 {
@@ -55,7 +57,7 @@ func TestNotesRepositoryCRUD(t *testing.T) {
 	}
 
 	// READ
-	found, err := repo.GetNote(ctx, created.ID)
+	found, err := repo.GetNote(ctx, userID, created.ID)
 	if err != nil {
 		t.Fatalf("could not retrieve note: %v", err)
 	}
@@ -70,6 +72,7 @@ func TestNotesRepositoryCRUD(t *testing.T) {
 
 	updated, err := repo.UpdateNote(
 		ctx,
+		userID,
 		created.ID,
 		updatedTitle,
 		updatedContent,
@@ -83,7 +86,7 @@ func TestNotesRepositoryCRUD(t *testing.T) {
 	}
 
 	// DELETE
-	rowsAffected, err := repo.DeleteNote(ctx, created.ID)
+	rowsAffected, err := repo.DeleteNote(ctx, userID, created.ID)
 	if err != nil {
 		t.Fatalf("could not delete note: %v", err)
 	}
@@ -93,7 +96,7 @@ func TestNotesRepositoryCRUD(t *testing.T) {
 	}
 
 	// Confirm that the deleted note no longer exists.
-	_, err = repo.GetNote(ctx, created.ID)
+	_, err = repo.GetNote(ctx, userID, created.ID)
 	if err == nil {
 		t.Fatal("expected an error when retrieving a deleted note")
 	}
@@ -119,11 +122,13 @@ func TestNotesRepositoryTagsAndSearch(t *testing.T) {
 
 	queries := dbgen.New(pool)
 	repo := NewNotes(queries)
+	userID := createTestUser(t, ctx, pool, queries)
 
 	title := fmt.Sprintf("Go Backend Test %d", time.Now().UnixNano())
 
 	note, err := repo.CreateNote(
 		ctx,
+		userID,
 		title,
 		"Learning PostgreSQL and Go APIs",
 	)
@@ -132,18 +137,18 @@ func TestNotesRepositoryTagsAndSearch(t *testing.T) {
 	}
 
 	defer func() {
-		_, _ = repo.DeleteNote(context.Background(), note.ID)
+		_, _ = repo.DeleteNote(context.Background(), userID, note.ID)
 	}()
 
 	// Attach tags.
 	for _, tag := range []string{"go", "backend"} {
-		if err := repo.AddTagToNote(ctx, note.ID, tag); err != nil {
+		if err := repo.AddTagToNote(ctx, userID, note.ID, tag); err != nil {
 			t.Fatalf("could not attach tag %q: %v", tag, err)
 		}
 	}
 
 	// Search by text.
-	results, err := repo.SearchNotes(ctx, "PostgreSQL", "")
+	results, err := repo.SearchNotes(ctx, userID, "PostgreSQL", "")
 	if err != nil {
 		t.Fatalf("could not search notes: %v", err)
 	}
@@ -153,7 +158,7 @@ func TestNotesRepositoryTagsAndSearch(t *testing.T) {
 	}
 
 	// Filter by tag.
-	results, err = repo.SearchNotes(ctx, "", "backend")
+	results, err = repo.SearchNotes(ctx, userID, "", "backend")
 	if err != nil {
 		t.Fatalf("could not filter notes: %v", err)
 	}
@@ -163,7 +168,7 @@ func TestNotesRepositoryTagsAndSearch(t *testing.T) {
 	}
 
 	// Combine search and tag.
-	results, err = repo.SearchNotes(ctx, "PostgreSQL", "backend")
+	results, err = repo.SearchNotes(ctx, userID, "PostgreSQL", "backend")
 	if err != nil {
 		t.Fatalf("could not combine note search and tag filter: %v", err)
 	}
@@ -171,6 +176,31 @@ func TestNotesRepositoryTagsAndSearch(t *testing.T) {
 	if !containsNote(results, note.ID) {
 		t.Fatal("expected combined filters to contain the created note")
 	}
+}
+
+func createTestUser(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	queries *dbgen.Queries,
+) int64 {
+	t.Helper()
+
+	user, err := queries.CreateUser(ctx, dbgen.CreateUserParams{
+		Email:        fmt.Sprintf("store-test-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "test",
+	})
+	if err != nil {
+		t.Fatalf("could not create test user: %v", err)
+	}
+
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), "DELETE FROM users WHERE id = $1", user.ID); err != nil {
+			t.Errorf("could not delete test user: %v", err)
+		}
+	})
+
+	return user.ID
 }
 
 func containsNote(notes []dbgen.Note, id int64) bool {

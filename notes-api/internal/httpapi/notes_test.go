@@ -32,7 +32,7 @@ type fakeNotesRepository struct {
 	addTagsErr    error
 }
 
-func (f *fakeNotesRepository) CreateNote(ctx context.Context, title string, content string) (dbgen.Note, error) {
+func (f *fakeNotesRepository) CreateNote(ctx context.Context, userID int64, title string, content string) (dbgen.Note, error) {
 	if f.createErr != nil {
 		return dbgen.Note{}, f.createErr
 	}
@@ -44,7 +44,7 @@ func (f *fakeNotesRepository) CreateNote(ctx context.Context, title string, cont
 	}, nil
 }
 
-func (f *fakeNotesRepository) GetNote(ctx context.Context, id int64) (dbgen.Note, error) {
+func (f *fakeNotesRepository) GetNote(ctx context.Context, userID, id int64) (dbgen.Note, error) {
 	if f.getErr != nil {
 		return dbgen.Note{}, f.getErr
 	}
@@ -56,13 +56,13 @@ func (f *fakeNotesRepository) GetNote(ctx context.Context, id int64) (dbgen.Note
 	}, nil
 }
 
-func (f *fakeNotesRepository) SearchNotes(ctx context.Context, search string, tag string) ([]dbgen.Note, error) {
+func (f *fakeNotesRepository) SearchNotes(ctx context.Context, userID int64, search string, tag string) ([]dbgen.Note, error) {
 	return []dbgen.Note{}, nil
 }
 
 func (f *fakeNotesRepository) DeleteNote(
 	ctx context.Context,
-	id int64,
+	userID, id int64,
 ) (int64, error) {
 	f.deleteCalled = true
 	f.deletedID = id
@@ -80,6 +80,7 @@ func (f *fakeNotesRepository) DeleteNote(
 
 func (f *fakeNotesRepository) AddTagToNote(
 	ctx context.Context,
+	userID int64,
 	noteID int64,
 	tag string,
 ) error {
@@ -88,6 +89,10 @@ func (f *fakeNotesRepository) AddTagToNote(
 	f.addTags = append(f.addTags, tag)
 
 	return f.addTagsErr
+}
+
+func withTestUser(req *http.Request) *http.Request {
+	return req.WithContext(context.WithValue(req.Context(), userIDKey, int64(1)))
 }
 
 func TestCreateNote(t *testing.T) {
@@ -99,7 +104,7 @@ func TestCreateNote(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/notes", strings.NewReader(body))
 	recorder := httptest.NewRecorder()
 
-	handler.CreateNoteHandler(recorder, req)
+	handler.CreateNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d", http.StatusCreated, recorder.Code)
@@ -128,7 +133,7 @@ func TestGetNoteNotFound(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.GetNoteHandler(recorder, req)
+	handler.GetNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf(
@@ -153,7 +158,7 @@ func TestCreateNoteInvalidJSON(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.CreateNoteHandler(recorder, req)
+	handler.CreateNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf(
@@ -166,7 +171,7 @@ func TestCreateNoteInvalidJSON(t *testing.T) {
 
 func (f *fakeNotesRepository) UpdateNote(
 	ctx context.Context,
-	id int64,
+	userID, id int64,
 	title, content string,
 ) (dbgen.Note, error) {
 	f.updateCalled = true
@@ -205,7 +210,7 @@ func TestUpdateNoteHandlerSuccess(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.UpdateNoteHandler(recorder, req)
+	handler.UpdateNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf(
@@ -246,7 +251,7 @@ func TestUpdateNoteHandlerInvalidID(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.UpdateNoteHandler(recorder, req)
+	handler.UpdateNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf(
@@ -274,7 +279,7 @@ func TestUpdateNoteHandlerInvalidJSON(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.UpdateNoteHandler(recorder, req)
+	handler.UpdateNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf(
@@ -304,7 +309,7 @@ func TestUpdateNoteHandlerInvalidNote(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.UpdateNoteHandler(recorder, req)
+	handler.UpdateNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf(
@@ -337,7 +342,7 @@ func TestUpdateNoteHandlerNotFound(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.UpdateNoteHandler(recorder, req)
+	handler.UpdateNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf(
@@ -366,7 +371,7 @@ func TestUpdateNoteHandlerInternalError(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.UpdateNoteHandler(recorder, req)
+	handler.UpdateNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf(
@@ -390,7 +395,7 @@ func TestDeleteNoteHandlerSuccess(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.DeleteNoteHandler(recorder, req)
+	handler.DeleteNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusNoContent {
 		t.Fatalf(
@@ -422,7 +427,7 @@ func TestDeleteNoteHandlerInvalidID(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.DeleteNoteHandler(recorder, req)
+	handler.DeleteNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf(
@@ -454,7 +459,7 @@ func TestDeleteNoteHandlerNotFound(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.DeleteNoteHandler(recorder, req)
+	handler.DeleteNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf(
@@ -481,7 +486,7 @@ func TestDeleteNoteHandlerInternalError(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.DeleteNoteHandler(recorder, req)
+	handler.DeleteNoteHandler(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf(
@@ -507,7 +512,7 @@ func TestAddNoteTagsSuccess(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 
-	handler.AddTags(recorder, req)
+	handler.AddTags(recorder, withTestUser(req))
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf(

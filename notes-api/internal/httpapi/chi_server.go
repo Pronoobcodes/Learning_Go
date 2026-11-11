@@ -27,34 +27,39 @@ func NewChiRouter(
 	router.Post("/auth/login", authHandler.LoginHandler)
 	router.Post("/auth/register", authHandler.RegisterHandler)
 
-	// Notes routes.
-	router.Get("/notes", notesHandler.ListNotesHandler)
-	router.Post("/notes", notesHandler.CreateNoteHandler)
+	// Protected routes.
+	router.Group(func(r chi.Router) {
+		r.Use(AuthMiddleware(authService))
 
-	router.Route("/notes", func(r chi.Router) {
-		r.Get("/", notesHandler.ListNotesHandler)
-		r.Post("/", notesHandler.CreateNoteHandler)
+		// Notes routes.
+		r.Get("/notes", notesHandler.ListNotesHandler)
+		r.Post("/notes", notesHandler.CreateNoteHandler)
 
-		r.Get("/{id}", withChiPathParams(notesHandler.GetNoteHandler))
-		r.Put("/{id}", withChiPathParams(notesHandler.UpdateNoteHandler))
-		r.Delete("/{id}", withChiPathParams(notesHandler.DeleteNoteHandler))
+		r.Route("/notes", func(r chi.Router) {
+			r.Get("/", notesHandler.ListNotesHandler)
+			r.Post("/", notesHandler.CreateNoteHandler)
 
-		r.Post("/{id}/tags", withChiPathParams(notesHandler.AddTags))
-	})
+			r.Get("/{id}", withChiPathParams(notesHandler.GetNoteHandler))
+			r.Put("/{id}", withChiPathParams(notesHandler.UpdateNoteHandler))
+			r.Delete("/{id}", withChiPathParams(notesHandler.DeleteNoteHandler))
 
-	// Bookmark routes.
-	router.Get("/bookmarks", bookmarksHandler.ListBookmarks)
-	router.Post("/bookmarks", bookmarksHandler.CreateBookmark)
+			r.Post("/{id}/tags", withChiPathParams(notesHandler.AddTags))
+		})
 
-	router.Route("/bookmarks", func(r chi.Router) {
-		r.Get("/", bookmarksHandler.ListBookmarks)
-		r.Post("/", bookmarksHandler.CreateBookmark)
+		// Bookmark routes.
+		r.Get("/bookmarks", bookmarksHandler.ListBookmarks)
+		r.Post("/bookmarks", bookmarksHandler.CreateBookmark)
 
-		r.Get("/{id}", withChiPathParams(bookmarksHandler.GetBookmark))
-		r.Put("/{id}", withChiPathParams(bookmarksHandler.UpdateBookmark))
-		r.Delete("/{id}", withChiPathParams(bookmarksHandler.DeleteBookmark))
+		r.Route("/bookmarks", func(r chi.Router) {
+			r.Get("/", bookmarksHandler.ListBookmarks)
+			r.Post("/", bookmarksHandler.CreateBookmark)
 
-		r.Post("/{id}/tags", withChiPathParams(bookmarksHandler.AddTags))
+			r.Get("/{id}", withChiPathParams(bookmarksHandler.GetBookmark))
+			r.Put("/{id}", withChiPathParams(bookmarksHandler.UpdateBookmark))
+			r.Delete("/{id}", withChiPathParams(bookmarksHandler.DeleteBookmark))
+
+			r.Post("/{id}/tags", withChiPathParams(bookmarksHandler.AddTags))
+		})
 	})
 
 	return router
