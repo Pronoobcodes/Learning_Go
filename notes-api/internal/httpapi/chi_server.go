@@ -14,6 +14,7 @@ func NewChiRouter(
 	authService *service.AuthService,
 ) chi.Router {
 	router := chi.NewRouter()
+	router.Use(RecoveryMiddleware)
 
 	// Construct handlers.
 	notesHandler := NewNotesHandler(notesService)

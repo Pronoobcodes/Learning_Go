@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,6 +23,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to load configuration: %v", err)
 	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 
 	// Connect to PostgreSQL.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

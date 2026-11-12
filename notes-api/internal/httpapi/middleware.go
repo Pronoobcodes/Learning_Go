@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -43,7 +43,7 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 		var id [16]byte
 
 		if _, err := rand.Read(id[:]); err != nil {
-			log.Printf("could not generate request ID: %v", err)
+			slog.Error("could not generate request ID", "error", err)
 			http.Error(w, "could not generate request ID", http.StatusInternalServerError)
 			return
 		}
@@ -83,14 +83,13 @@ func RequestLogger(next http.Handler) http.Handler {
 
 		requestID := RequestIDFromContext(r.Context())
 
-		log.Printf(
-			"request_id=%s method=%s path=%s status=%d duration=%s remote_addr=%s",
-			requestID,
-			r.Method,
-			r.URL.Path,
-			status,
-			duration,
-			r.RemoteAddr,
+		slog.Info("request completed",
+			"request_id", requestID,
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", status,
+			"duration", duration,
+			"remote_addr", r.RemoteAddr,
 		)
 	})
 }
