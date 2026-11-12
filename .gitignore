@@ -1,3 +1,20 @@
-rssagg
-.vscode/
+
+# Environment variables and secrets
 .env
+
+# Go build artifacts
+*.exe
+*.test
+*.out
+
+# Test coverage
+coverage
+coverage.out
+
+# IDE and editor files
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
