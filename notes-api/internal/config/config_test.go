@@ -4,9 +4,11 @@ import (
 	"testing"
 )
 
+const testJWTSecret = "01234567890123456789012345678901"
+
 func TestLoadUsesDefaultPort(t *testing.T) {
 	t.Setenv("PORT", "")
-	t.Setenv("JWT_SECRET", "test-secret")
+	t.Setenv("JWT_SECRET", testJWTSecret)
 	t.Setenv("DATABASE_URL", "postgres://app:password@localhost:5433/notes_bookmarks?sslmode=disable")
 
 	cfg, err := Load()
@@ -21,7 +23,7 @@ func TestLoadUsesDefaultPort(t *testing.T) {
 
 func TestLoadUsesCustomPort(t *testing.T) {
 	t.Setenv("PORT", "9090")
-	t.Setenv("JWT_SECRET", "test-secret")
+	t.Setenv("JWT_SECRET", testJWTSecret)
 	t.Setenv("DATABASE_URL", "postgres://app:password@localhost:5433/notes_bookmarks?sslmode=disable")
 
 	cfg, err := Load()
@@ -36,7 +38,7 @@ func TestLoadUsesCustomPort(t *testing.T) {
 
 func TestLoadRequiresDatabaseURL(t *testing.T) {
 	t.Setenv("PORT", "8080")
-	t.Setenv("JWT_SECRET", "test-secret")
+	t.Setenv("JWT_SECRET", testJWTSecret)
 	t.Setenv("DATABASE_URL", "")
 
 	_, err := Load()

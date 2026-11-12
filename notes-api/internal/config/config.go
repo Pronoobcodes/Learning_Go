@@ -23,6 +23,10 @@ func Load() (Config, error) {
 		return Config{}, errors.New("JWT_SECRET is required")
 	}
 
+	if len(cfg.JWTSecret) < 32 {
+		return Config{}, errors.New("JWT_SECRET must be at least 32 characters")
+	}
+
 	if cfg.DatabaseURL == "" {
 		return Config{}, errors.New("DATABASE_URL environment variable is required")
 	}
