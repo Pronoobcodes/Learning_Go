@@ -56,3 +56,21 @@ func (h *URLHandler) GetURL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(url)
 }
+
+func (h *URLHandler) RedirectURL(w http.ResponseWriter, r *http.Request) {
+    code := chi.URLParam(r, "code")
+
+    url, err := h.service.GetURL(code)
+    if err != nil {
+        http.Error(w, "URL not found", http.StatusNotFound)
+        return
+    }
+
+    err = h.service.IncrementClicks(code)
+    if err != nil {
+        http.Error(w, "Could not update click count", http.StatusInternalServerError)
+        return
+    }
+
+    http.Redirect(w, r, url.OriginalURL, http.StatusFound)
+}
