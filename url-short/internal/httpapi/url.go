@@ -58,19 +58,49 @@ func (h *URLHandler) GetURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *URLHandler) RedirectURL(w http.ResponseWriter, r *http.Request) {
-    code := chi.URLParam(r, "code")
+	code := chi.URLParam(r, "code")
 
-    url, err := h.service.GetURL(code)
-    if err != nil {
-        http.Error(w, "URL not found", http.StatusNotFound)
-        return
-    }
+	url, err := h.service.GetURL(code)
+	if err != nil {
+		http.Error(w, "URL not found", http.StatusNotFound)
+		return
+	}
 
-    err = h.service.IncrementClicks(code)
-    if err != nil {
-        http.Error(w, "Could not update click count", http.StatusInternalServerError)
-        return
-    }
+	err = h.service.IncrementClicks(code)
+	if err != nil {
+		http.Error(w, "Could not update click count", http.StatusInternalServerError)
+		return
+	}
 
-    http.Redirect(w, r, url.OriginalURL, http.StatusFound)
+	http.Redirect(w, r, url.OriginalURL, http.StatusFound)
+}
+
+func (h *URLHandler) DeleteURL(w http.ResponseWriter, r *http.Request) {
+	code := chi.URLParam(r, "code")
+
+	err := h.service.DeleteURL(code)
+	if err != nil {
+		http.Error(w, "URL not found", http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *URLHandler) GetURLStats(w http.ResponseWriter, r *http.Request) {
+	code := chi.URLParam(r, "code")
+
+	url, err := h.service.GetURL(code)
+	if err != nil {
+		http.Error(w, "URL not found", http.StatusNotFound)
+		return
+	}
+
+	stats := map[string]interface{}{
+		"code":   url.Code,
+		"clicks": url.Clicks,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stats)
 }

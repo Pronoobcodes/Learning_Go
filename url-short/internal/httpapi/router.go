@@ -17,7 +17,11 @@ func NewRouter(urlHandler *URLHandler) http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Post("/urls", urlHandler.CreateURL)
 		r.Get("/urls/{code}", urlHandler.GetURL)
+		r.Delete("/urls/{code}", urlHandler.DeleteURL)
+		r.Get("/urls/{code}/stats", urlHandler.GetURLStats)
 	})
+
+	r.Get("/{code}", urlHandler.RedirectURL)
 
 	return r
 }

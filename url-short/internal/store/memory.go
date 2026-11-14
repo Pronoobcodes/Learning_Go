@@ -22,6 +22,10 @@ func (m *MemoryRepository) Create(url URL) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	if _, exists := m.urls[url.Code]; exists {
+		return errors.New("short code already exists")
+	}
+
 	m.urls[url.Code] = url
 	return nil
 }
