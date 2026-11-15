@@ -6,6 +6,7 @@ import (
 )
 
 var ErrURLNotFound = errors.New("URL not found")
+var ErrCodeAlreadyExists = errors.New("short code already exists")
 
 type MemoryRepository struct {
 	mu   sync.RWMutex
@@ -18,16 +19,16 @@ func NewMemoryRepository() *MemoryRepository {
 	}
 }
 
-func (m *MemoryRepository) Create(url URL) error {
+func (m *MemoryRepository) Create(url URL) (URL, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if _, exists := m.urls[url.Code]; exists {
-		return errors.New("short code already exists")
+		return URL{}, ErrCodeAlreadyExists
 	}
 
 	m.urls[url.Code] = url
-	return nil
+	return url, nil
 }
 
 func (m *MemoryRepository) GetByCode(code string) (URL, error) {

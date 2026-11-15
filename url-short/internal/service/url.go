@@ -11,7 +11,7 @@ import (
 var ErrInvalidURL = errors.New("invalid URL")
 
 type URLRepository interface {
-	Create(url store.URL) error
+	Create(url store.URL) (store.URL, error)
 	GetByCode(code string) (store.URL, error)
 	Delete(code string) error
 	IncrementClicks(code string) error
@@ -50,12 +50,12 @@ func (s *URLService) CreateURL(originalURL string) (store.URL, error) {
 			OriginalURL: originalURL,
 		}
 
-		err = s.repo.Create(url)
+		createdURL, err := s.repo.Create(url)
 		if err == nil {
-			return url, nil
+			return createdURL, nil
 		}
 
-		if err.Error() != "short code already exists" {
+		if !errors.Is(err, store.ErrCodeAlreadyExists) {
 			return store.URL{}, err
 		}
 	}
