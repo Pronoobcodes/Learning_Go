@@ -37,13 +37,16 @@ func (q *Queries) CreateURL(ctx context.Context, arg CreateURLParams) (Url, erro
 	return i, err
 }
 
-const deleteURL = `-- name: DeleteURL :exec
+const deleteURL = `-- name: DeleteURL :execrows
 DELETE FROM urls WHERE code = $1
 `
 
-func (q *Queries) DeleteURL(ctx context.Context, code string) error {
-	_, err := q.db.Exec(ctx, deleteURL, code)
-	return err
+func (q *Queries) DeleteURL(ctx context.Context, code string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteURL, code)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getURLByCode = `-- name: GetURLByCode :one
@@ -72,13 +75,16 @@ func (q *Queries) GetURLByCode(ctx context.Context, code string) (Url, error) {
 	return i, err
 }
 
-const incrementClicks = `-- name: IncrementClicks :exec
+const incrementClicks = `-- name: IncrementClicks :execrows
 UPDATE urls SET clicks = clicks + 1 WHERE code = $1
 `
 
-func (q *Queries) IncrementClicks(ctx context.Context, code string) error {
-	_, err := q.db.Exec(ctx, incrementClicks, code)
-	return err
+func (q *Queries) IncrementClicks(ctx context.Context, code string) (int64, error) {
+	result, err := q.db.Exec(ctx, incrementClicks, code)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const listURLs = `-- name: ListURLs :many

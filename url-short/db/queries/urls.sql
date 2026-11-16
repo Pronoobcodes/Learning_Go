@@ -19,10 +19,10 @@ WHERE
     code = $1
 LIMIT 1;
 
--- name: DeleteURL :exec
+-- name: DeleteURL :execrows
 DELETE FROM urls WHERE code = $1;
 
--- name: IncrementClicks :exec
+-- name: IncrementClicks :execrows
 UPDATE urls SET clicks = clicks + 1 WHERE code = $1;
 
 -- name: ListURLs :many

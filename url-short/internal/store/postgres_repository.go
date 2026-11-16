@@ -64,9 +64,25 @@ func (p *PostgresRepository) GetByCode(code string) (URL, error) {
 }
 
 func (p *PostgresRepository) Delete(code string) error {
-	return p.queries.DeleteURL(context.Background(), code)
+	rows, err := p.queries.DeleteURL(context.Background(), code)
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return ErrURLNotFound
+	}
+	return nil
 }
 
 func (p *PostgresRepository) IncrementClicks(code string) error {
-	return p.queries.IncrementClicks(context.Background(), code)
+	rows, err := p.queries.IncrementClicks(context.Background(), code)
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return ErrURLNotFound
+	}
+	return nil
 }
