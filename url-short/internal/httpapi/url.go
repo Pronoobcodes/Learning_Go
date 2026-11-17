@@ -2,9 +2,11 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"url-shortener/internal/service"
+	"url-shortener/internal/store"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -34,7 +36,16 @@ func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
 
 	url, err := h.service.CreateURL(req.OriginalURL)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if errors.Is(err, store.ErrCodeAlreadyExists) {
+			http.Error(w, "Short code already exists", http.StatusConflict)
+			return
+		}
+		if errors.Is(err, service.ErrInvalidURL) {
+			http.Error(w, "Invalid URL", http.StatusBadRequest)
+			return
+		}
+
+		http.Error(w, "Could not create URL", http.StatusInternalServerError)
 		return
 	}
 
@@ -49,7 +60,12 @@ func (h *URLHandler) GetURL(w http.ResponseWriter, r *http.Request) {
 
 	url, err := h.service.GetURL(code)
 	if err != nil {
-		http.Error(w, "URL not found", http.StatusNotFound)
+		if errors.Is(err, store.ErrURLNotFound) {
+			http.Error(w, "URL not found", http.StatusNotFound)
+			return
+		}
+
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -62,13 +78,23 @@ func (h *URLHandler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 
 	url, err := h.service.GetURL(code)
 	if err != nil {
-		http.Error(w, "URL not found", http.StatusNotFound)
+		if errors.Is(err, store.ErrURLNotFound) {
+			http.Error(w, "URL not found", http.StatusNotFound)
+			return
+		}
+
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	err = h.service.IncrementClicks(code)
 	if err != nil {
-		http.Error(w, "Could not update click count", http.StatusInternalServerError)
+		if errors.Is(err, store.ErrURLNotFound) {
+			http.Error(w, "URL not found", http.StatusNotFound)
+			return
+		}
+
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -80,7 +106,12 @@ func (h *URLHandler) DeleteURL(w http.ResponseWriter, r *http.Request) {
 
 	err := h.service.DeleteURL(code)
 	if err != nil {
-		http.Error(w, "URL not found", http.StatusNotFound)
+		if errors.Is(err, store.ErrURLNotFound) {
+			http.Error(w, "URL not found", http.StatusNotFound)
+			return
+		}
+
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 

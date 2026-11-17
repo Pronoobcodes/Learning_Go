@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"url-shortener/internal/config"
 	"url-shortener/internal/httpapi"
 	"url-shortener/internal/service"
 	"url-shortener/internal/store"
@@ -14,9 +15,12 @@ import (
 func main() {
 	ctx := context.Background()
 
-	databaseURL := "postgres://app:password@localhost:5433/url_shortener?sslmode=disable"
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal("Could not load configuration: ", err)
+	}
 
-	pool, err := store.NewPool(ctx, databaseURL)
+	pool, err := store.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatal("Could not connect to database: ", err)
 	}
@@ -30,9 +34,11 @@ func main() {
 
 	router := httpapi.NewRouter(urlHandler)
 
-	log.Println("Server running on :8080")
+	address := ":" + cfg.Port
 
-	err = http.ListenAndServe(":8080", router)
+	log.Println("Server running on ", address)
+
+	err = http.ListenAndServe(address, router)
 	if err != nil {
 		log.Fatal(err)
 	}
