@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"net/url"
 	"strings"
@@ -11,10 +12,11 @@ import (
 var ErrInvalidURL = errors.New("invalid URL")
 
 type URLRepository interface {
-	Create(url store.URL) (store.URL, error)
-	GetByCode(code string) (store.URL, error)
-	Delete(code string) error
-	IncrementClicks(code string) error
+	Create(ctx context.Context, url store.URL) (store.URL, error)
+	GetByCode(ctx context.Context, code string) (store.URL, error)
+	Delete(ctx context.Context, code string) error
+	IncrementClicks(ctx context.Context, code string) error
+	GetURLAndIncrementClicks(ctx context.Context, code string) (store.URL, error)
 }
 
 type URLService struct {
@@ -27,7 +29,7 @@ func NewURLService(repo URLRepository) *URLService {
 	}
 }
 
-func (s *URLService) CreateURL(originalURL string) (store.URL, error) {
+func (s *URLService) CreateURL(ctx context.Context, originalURL string) (store.URL, error) {
 	originalURL = strings.TrimSpace(originalURL)
 
 	parsedURL, err := url.ParseRequestURI(originalURL)
@@ -50,7 +52,7 @@ func (s *URLService) CreateURL(originalURL string) (store.URL, error) {
 			OriginalURL: originalURL,
 		}
 
-		createdURL, err := s.repo.Create(url)
+		createdURL, err := s.repo.Create(ctx, url)
 		if err == nil {
 			return createdURL, nil
 		}
@@ -62,31 +64,42 @@ func (s *URLService) CreateURL(originalURL string) (store.URL, error) {
 	return store.URL{}, errors.New("could not generate a unique short code")
 }
 
-func (s *URLService) GetURL(code string) (store.URL, error) {
+func (s *URLService) GetURL(ctx context.Context, code string) (store.URL, error) {
 	code = strings.TrimSpace(code)
 
 	if code == "" {
 		return store.URL{}, ErrInvalidURL
 	}
 
-	return s.repo.GetByCode(code)
+	return s.repo.GetByCode(ctx, code)
 }
 
-func (s *URLService) DeleteURL(code string) error {
+func (s *URLService) DeleteURL(ctx context.Context, code string) error {
 	code = strings.TrimSpace(code)
 
 	if code == "" {
 		return ErrInvalidURL
 	}
 
-	return s.repo.Delete(code)
+	return s.repo.Delete(ctx, code)
 }
 
-func (s *URLService) IncrementClicks(code string) error {
+func (s *URLService) IncrementClicks(ctx context.Context, code string) error {
 	code = strings.TrimSpace(code)
+
 	if code == "" {
 		return ErrInvalidURL
 	}
 
-	return s.repo.IncrementClicks(code)
+	return s.repo.IncrementClicks(ctx, code)
+}
+
+func (s *URLService) GetURLAndIncrementClicks(ctx context.Context, code string) (store.URL, error) {
+	code = strings.TrimSpace(code)
+
+	if code == "" {
+		return store.URL{}, ErrInvalidURL
+	}
+
+	return s.repo.GetURLAndIncrementClicks(ctx, code)
 }

@@ -20,8 +20,8 @@ func NewPostgresRepository(queries *db.Queries) *PostgresRepository {
 	}
 }
 
-func (p *PostgresRepository) Create(url URL) (URL, error) {
-	result, err := p.queries.CreateURL(context.Background(), db.CreateURLParams{
+func (p *PostgresRepository) Create(ctx context.Context, url URL) (URL, error) {
+	result, err := p.queries.CreateURL(ctx, db.CreateURLParams{
 		Code:        url.Code,
 		OriginalUrl: url.OriginalURL,
 	})
@@ -44,8 +44,8 @@ func (p *PostgresRepository) Create(url URL) (URL, error) {
 	}, nil
 }
 
-func (p *PostgresRepository) GetByCode(code string) (URL, error) {
-	result, err := p.queries.GetURLByCode(context.Background(), code)
+func (p *PostgresRepository) GetByCode(ctx context.Context, code string) (URL, error) {
+	result, err := p.queries.GetURLByCode(ctx, code)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return URL{}, ErrURLNotFound
@@ -63,8 +63,8 @@ func (p *PostgresRepository) GetByCode(code string) (URL, error) {
 	}, nil
 }
 
-func (p *PostgresRepository) Delete(code string) error {
-	rows, err := p.queries.DeleteURL(context.Background(), code)
+func (p *PostgresRepository) Delete(ctx context.Context, code string) error {
+	rows, err := p.queries.DeleteURL(ctx, code)
 	if err != nil {
 		return err
 	}
@@ -75,8 +75,8 @@ func (p *PostgresRepository) Delete(code string) error {
 	return nil
 }
 
-func (p *PostgresRepository) IncrementClicks(code string) error {
-	rows, err := p.queries.IncrementClicks(context.Background(), code)
+func (p *PostgresRepository) IncrementClicks(ctx context.Context, code string) error {
+	rows, err := p.queries.IncrementClicks(ctx, code)
 	if err != nil {
 		return err
 	}
@@ -85,4 +85,23 @@ func (p *PostgresRepository) IncrementClicks(code string) error {
 		return ErrURLNotFound
 	}
 	return nil
+}
+
+func (p *PostgresRepository) GetURLAndIncrementClicks(ctx context.Context, code string) (URL, error) {
+	result, err := p.queries.GetURLAndIncrementClicks(ctx, code)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return URL{}, ErrURLNotFound
+		}
+
+		return URL{}, err
+	}
+
+	return URL{
+		ID:          result.ID,
+		Code:        result.Code,
+		OriginalURL: result.OriginalUrl,
+		Clicks:      result.Clicks,
+		CreatedAt:   result.CreatedAt.Time,
+	}, nil
 }

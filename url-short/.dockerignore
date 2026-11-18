@@ -1,0 +1,14 @@
+
+.git
+.github
+.env
+.env.*
+!.env.example
+
+bin/
+tmp/
+coverage/
+*.exe
+*.test
+
+README.md

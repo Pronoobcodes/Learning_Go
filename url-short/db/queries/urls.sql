@@ -34,3 +34,14 @@ SELECT
     created_at
 FROM urls
 ORDER BY created_at DESC;
+
+-- name: GetURLAndIncrementClicks :one
+UPDATE urls
+SET
+    clicks = clicks + 1
+WHERE
+    code = $1 RETURNING id,
+    code,
+    original_url,
+    clicks,
+    created_at;

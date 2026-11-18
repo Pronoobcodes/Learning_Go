@@ -49,6 +49,31 @@ func (q *Queries) DeleteURL(ctx context.Context, code string) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const getURLAndIncrementClicks = `-- name: GetURLAndIncrementClicks :one
+UPDATE urls
+SET
+    clicks = clicks + 1
+WHERE
+    code = $1 RETURNING id,
+    code,
+    original_url,
+    clicks,
+    created_at
+`
+
+func (q *Queries) GetURLAndIncrementClicks(ctx context.Context, code string) (Url, error) {
+	row := q.db.QueryRow(ctx, getURLAndIncrementClicks, code)
+	var i Url
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.OriginalUrl,
+		&i.Clicks,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getURLByCode = `-- name: GetURLByCode :one
 SELECT
     id,

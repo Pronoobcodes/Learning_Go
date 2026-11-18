@@ -34,7 +34,7 @@ func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url, err := h.service.CreateURL(req.OriginalURL)
+	url, err := h.service.CreateURL(r.Context(), req.OriginalURL)
 	if err != nil {
 		if errors.Is(err, store.ErrCodeAlreadyExists) {
 			http.Error(w, "Short code already exists", http.StatusConflict)
@@ -58,7 +58,7 @@ func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
 func (h *URLHandler) GetURL(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
 
-	url, err := h.service.GetURL(code)
+	url, err := h.service.GetURL(r.Context(), code)
 	if err != nil {
 		if errors.Is(err, store.ErrURLNotFound) {
 			http.Error(w, "URL not found", http.StatusNotFound)
@@ -76,18 +76,7 @@ func (h *URLHandler) GetURL(w http.ResponseWriter, r *http.Request) {
 func (h *URLHandler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
 
-	url, err := h.service.GetURL(code)
-	if err != nil {
-		if errors.Is(err, store.ErrURLNotFound) {
-			http.Error(w, "URL not found", http.StatusNotFound)
-			return
-		}
-
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	err = h.service.IncrementClicks(code)
+	url, err := h.service.GetURLAndIncrementClicks(r.Context(), code)
 	if err != nil {
 		if errors.Is(err, store.ErrURLNotFound) {
 			http.Error(w, "URL not found", http.StatusNotFound)
@@ -104,7 +93,7 @@ func (h *URLHandler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 func (h *URLHandler) DeleteURL(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
 
-	err := h.service.DeleteURL(code)
+	err := h.service.DeleteURL(r.Context(), code)
 	if err != nil {
 		if errors.Is(err, store.ErrURLNotFound) {
 			http.Error(w, "URL not found", http.StatusNotFound)
@@ -121,7 +110,7 @@ func (h *URLHandler) DeleteURL(w http.ResponseWriter, r *http.Request) {
 func (h *URLHandler) GetURLStats(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
 
-	url, err := h.service.GetURL(code)
+	url, err := h.service.GetURL(r.Context(), code)
 	if err != nil {
 		http.Error(w, "URL not found", http.StatusNotFound)
 		return
