@@ -1,0 +1,29 @@
+
+syntax = "proto3";
+
+package analytics.v1;
+
+option go_package = "url-shortener/gen/go/analytics/v1;analyticsv1";
+
+service AnalyticsService {
+  rpc RecordClick(RecordClickRequest) returns (RecordClickResponse);
+
+  rpc GetURLStats(GetURLStatsRequest) returns (GetURLStatsResponse);
+}
+
+message RecordClickRequest {
+  string code = 1;
+}
+
+message RecordClickResponse {
+  bool success = 1;
+}
+
+message GetURLStatsRequest {
+  string code = 1;
+}
+
+message GetURLStatsResponse {
+  string code = 1;
+  int64 total_clicks = 2;
+}
