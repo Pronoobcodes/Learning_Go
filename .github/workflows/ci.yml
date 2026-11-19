@@ -12,6 +12,10 @@ jobs:
     name: Test and Build
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: ./url-short
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,8 +23,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: url-short/go.mod
           cache: true
+          cache-dependency-path: url-short/go.sum
 
       - name: Download dependencies
         run: go mod download
