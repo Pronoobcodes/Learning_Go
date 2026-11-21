@@ -15,3 +15,9 @@ type Url struct {
 	Clicks      int64
 	CreatedAt   pgtype.Timestamptz
 }
+
+type UrlClick struct {
+	ID        int64
+	Code      string
+	ClickedAt pgtype.Timestamptz
+}
